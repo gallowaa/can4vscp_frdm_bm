@@ -176,6 +176,8 @@ void init() {
 
 	GPIO_DRV_InputPinInit(&switchPins[0]); /* init sw2 as input */
 
+	flexcan_init();
+
 	//Initialize LPTMR
 	LPTMR_DRV_Init(LPTMR_INSTANCE, &lptmrState, &lptmrUserConfig);
 
@@ -218,7 +220,7 @@ int main(void) {
 	uint32_t pdata32[8];
 
 	uint32_t id = 0x123; //29-bit only for extended
-	uint32_t pid = 0xdeadbeef;
+	uint32_t pid = 0x3ffff;
 	uint8_t dlc = 8;
 	uint32_t pdlc;
 	uint8_t pdlc8;
@@ -231,10 +233,7 @@ int main(void) {
 	// initialize the mcu, switched, 1ms clock, etc
 	init();
 
-	flexcan_init();
 
-	// Config receive mailbox
-	receive_mb_config();
 
 	// Enable a gpio for taking STB low
 	CAN0_STB_EN;
@@ -272,9 +271,9 @@ int main(void) {
 
 		if(currentCounter != lptmrCounter)
 		{
-			printf("Sending message \r\n");
+			//printf("Sending message \r\n");
 			//ret =  FLEXCANSendMessage(id, dlc, pdata8, FLEXCAN_TX_STD_FRAME);
-			ret =  FLEXCANSendMessage(pid, dlc, pdata8, FLEXCAN_TX_XTD_FRAME); //extended deadbeef msg
+			//ret =  FLEXCANSendMessage(pid, dlc, pdata8, FLEXCAN_TX_XTD_FRAME); //extended deadbeef msg
 
 
 			printf("Receiving message \r\n");
@@ -297,7 +296,7 @@ int main(void) {
 			ret = getCANFrame(&pid, &pdlc8, pdata8);
 
 			printf("ID: 0x%lx, DLC=%lu \r\n",pid, pdlc8);
-			printf("nRX MB data: 0x\r\n");
+			printf("RX MB data: 0x");
 			for (i = 0; i < pdlc8; i++){
 				printf("%02x ", pdata8[i]);
 

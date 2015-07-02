@@ -134,15 +134,15 @@ int8_t getCANFrame(uint32_t *pid, uint8_t *pdlc, uint8_t *pdata)
         // Must be extended frame
         if (!(flags & FLEXCAN_RX_XTD_FRAME)) return FALSE;
 
-        printf("ID: 0x%lx, DLC=%lu \r\n",*pid, pdlc_32);
-        printf("nRX MB data: 0x\r\n");
+        /*printf("ID: 0x%lx, DLC=%lu \r\n",*pid, pdlc_32);
+        printf("RX MB data: 0x");*/
 
         for (i = 0; i < pdlc_32; i++) {
-        	printf("%02x ", pdata_32[i]);
+        	//printf("%02x ", pdata_32[i]);
         	pdata[i] = pdata_32[i];
         }
 
-        // convert all the 32-bit stuff to 8-bit, pdlc_32 is really only 4-bits
+        // convert all the 32-bit stuff to 8-bit, pdlc_32 is really only 4-bits so this is safe.
         *pdlc = (uint8_t) pdlc_32;
 
         return TRUE;

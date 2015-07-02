@@ -103,7 +103,7 @@ void flexcan_init(void) {
 
 	// Set rxIdentifier as same as txIdentifier to receive loopback data
 	rxIdentifier = 0x124;
-	txIdentifier = 0x123;
+	txIdentifier = 0x122;
 
 	/* The following tables are the CAN bit timing parameters that are calculated by using the method
 	 * outlined in AN1798, section 4.1.
@@ -169,10 +169,11 @@ void flexcan_init(void) {
 
 	//FLEXCAN_DRV_SetRxMaskType(instance, kFlexCanRxMaskIndividual);
 #ifdef MASK
+
 	FLEXCAN_DRV_SetRxMaskType(instance, kFlexCanRxMaskGlobal);
+	//result = FLEXCAN_DRV_SetRxMbGlobalMask(instance, kFlexCanMsgIdStd, 0x123);
+	result = FLEXCAN_DRV_SetRxMbGlobalMask(instance, kFlexCanMsgIdExt, 0x124); //kFlexCanMsgIdExt
 
-
-	result = FLEXCAN_DRV_SetRxMbGlobalMask(instance, kFlexCanMsgIdStd, 0x000);
 	if (result)
 	{
 		numErrors++;
@@ -191,6 +192,7 @@ void flexcan_init(void) {
 	 */
 
 	// Extern ID
+
 	result = FLEXCAN_DRV_SetRxIndividualMask(instance, kFlexCanMsgIdExt, rxMailboxNum, 0x123);
 	if(result)
 	{
@@ -198,6 +200,10 @@ void flexcan_init(void) {
 		printf("\r\nFLEXCAN set rx individual mask with standard ID fail. result: 0x%lx", result);
 	}
 #endif
+
+	// Config receive mailbox for flexcan
+	receive_mb_config();
+
 }
 
 // FlexCAN receive configuration

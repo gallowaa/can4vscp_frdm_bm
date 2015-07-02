@@ -60,15 +60,5 @@ Thumbs.db
 *.x86_64
 
 #Don't track these
-
-<<<<<<< HEAD
-can4vscp_frdmk64f/Debug/*
-=======
-flexcan_test_frdmk64f/
-can4vscp_frdmk64f/Debug
-Project1/
-test
->>>>>>> f20bf543bd57c9a4983b836d7147c6ee0cda467b
 RemoteSystemsTempFiles
-default_kinetis_p
 .metadata
