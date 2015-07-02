@@ -96,7 +96,7 @@ int8_t sendCANFrame(uint32_t id, uint8_t dlc, uint8_t *pdata)
 
 	while ( sendTimer < 1 ) {
 		//if ( ECANSendMessage( id, pdata, dlc, ECAN_TX_XTD_FRAME ) ) {
-		if( CAN_SUCCESS == FLEXCANSendMessage(id, pdata, dlc, FLEXCAN_TX_XTD_FRAME) ) {
+		if( CAN_SUCCESS == FLEXCANSendMessage(id, dlc, pdata, FLEXCAN_TX_XTD_FRAME) ) {
 			rv = TRUE;
 			break;
 		}
@@ -110,20 +110,40 @@ int8_t sendCANFrame(uint32_t id, uint8_t dlc, uint8_t *pdata)
 
 int8_t getCANFrame(uint32_t *pid, uint8_t *pdlc, uint8_t *pdata)
 {
-    ECAN_RX_MSG_FLAGS flags;
+    FLEXCAN_RX_MSG_FLAGS flags;
+    int i;
+
+    uint32_t pdlc_32;
+    uint32_t pdata_32[8]; // For bit compatibility w/ FLEXCANReceive func
+
 
     // Don't read in new event if there already is an event
     // in the input buffer
     if (vscp_imsg.flags & VSCP_VALID_MSG) return FALSE;
 
-    //if ( ECANReceiveMessage( pid, pdata, pdlc, &flags) ) {
-    if ( FLEXCANReceiveMessage( pid, pdata, pdlc, &flags) ) {
+    /*
+     * pdlc & pdata must stay as 32-bit in FLEXCANReceive.
+     * Would be nice to keep getCANFrame interface the same as Ake's implementation
+     */
+
+    if ( FLEXCANReceiveMessage( pid, &pdlc_32, pdata_32, &flags) ) {
 
         // RTR not interesting
         if (flags & FLEXCAN_RX_RTR_FRAME) return FALSE;
 
         // Must be extended frame
         if (!(flags & FLEXCAN_RX_XTD_FRAME)) return FALSE;
+
+        printf("ID: 0x%lx, DLC=%lu \r\n",*pid, pdlc_32);
+        printf("nRX MB data: 0x\r\n");
+
+        for (i = 0; i < pdlc_32; i++) {
+        	printf("%02x ", pdata_32[i]);
+        	pdata[i] = pdata_32[i];
+        }
+
+        // convert all the 32-bit stuff to 8-bit, pdlc_32 is really only 4-bits
+        *pdlc = (uint8_t) pdlc_32;
 
         return TRUE;
 
@@ -378,7 +398,25 @@ void doWork(void)
  */
 uint8_t vscp_readAppReg(uint8_t reg)
 {
-	return 0; /* todo: vscp_function */
+	uint8_t rv;
+	rv = 0x00; //default read
+
+	/* example assumes 16-bit temp sensor */
+	if( 0 == vscp_page_select){
+
+		// MSB temp 1
+		if (10 == reg){
+			//rv = ((readTempSensor(1) >> 8 ) & 0xff );
+		}
+		// LSB temp 1
+		else if (11 == reg){
+			//rv = (readTempSensor(1) & 0xff);
+		}
+
+	}
+
+
+	return rv; /* todo: vscp_function */
 }
 
 /*!
@@ -386,6 +424,20 @@ uint8_t vscp_readAppReg(uint8_t reg)
  */
 uint8_t vscp_writeAppReg( uint8_t reg, uint8_t val )
 {
+	uint8_t rv;
+
+	rv = ~val; //error return
+
+	if(0 == vscp_page_select){
+		if (14 == reg) {
+			//writeFLASH( FLASH_INTERVAL_SENSOR1, val );
+			//rv = readFLASH(FLASH_INTERVAL_SENSOR1 );
+		}
+	}
+	else if (1 == vscp_page_select){
+		//stuff
+	}
+
 	return 0; /* todo: vscp_function */
 }
 

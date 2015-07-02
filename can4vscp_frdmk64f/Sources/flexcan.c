@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "flexcan.h"
-
+#define MASK
 
 // ***************************************************************************
 // 						Subroutines for flexcan
@@ -92,12 +92,14 @@ void flexcan_init(void) {
 	// Select mailbox number
 	rxMailboxNum = 8;
 	txMailboxNum = 9;
+
+	/*
 	rxRemoteMailboxNum = 10;
 	rxRemoteMailboxNum = 11;
 
 	// Select mailbox ID
 	rxRemoteIdentifier = 0x0F0;
-	txRemoteIdentifier = 0x00F;
+	txRemoteIdentifier = 0x00F;*/
 
 	// Set rxIdentifier as same as txIdentifier to receive loopback data
 	rxIdentifier = 0x124;
@@ -166,15 +168,17 @@ void flexcan_init(void) {
 	}
 
 	//FLEXCAN_DRV_SetRxMaskType(instance, kFlexCanRxMaskIndividual);
+#ifdef MASK
 	FLEXCAN_DRV_SetRxMaskType(instance, kFlexCanRxMaskGlobal);
 
 
-	result = FLEXCAN_DRV_SetRxMbGlobalMask(instance, kFlexCanMsgIdStd, 0x123);
+	result = FLEXCAN_DRV_SetRxMbGlobalMask(instance, kFlexCanMsgIdStd, 0x000);
 	if (result)
 	{
 		numErrors++;
 		printf("\r\nFLEXCAN set rx MB global mask. result: 0x%lx", result);
 	}
+
 
 	/*
 	// Standard ID
@@ -193,6 +197,7 @@ void flexcan_init(void) {
 		numErrors++;
 		printf("\r\nFLEXCAN set rx individual mask with standard ID fail. result: 0x%lx", result);
 	}
+#endif
 }
 
 // FlexCAN receive configuration
@@ -201,17 +206,18 @@ void receive_mb_config(void)
 	uint32_t result;
 	flexcan_data_info_t rxInfo;
 
-	rxInfo.msg_id_type = kFlexCanMsgIdStd;
+	//rxInfo.msg_id_type = kFlexCanMsgIdStd;
+	rxInfo.msg_id_type = kFlexCanMsgIdExt;
 	rxInfo.data_length = 8;
 
-	printf("\r\nFlexCAN MB receive config");
+	printf("FlexCAN MB receive config \r\n");
 
 	/* Configure RX MB fields*/
-	result = FLEXCAN_DRV_ConfigRxMb(instance, rxMailboxNum, &rxInfo,rxIdentifier);
+	result = FLEXCAN_DRV_ConfigRxMb(instance, rxMailboxNum, &rxInfo, rxIdentifier);
 	if (result)
 	{
 		numErrors++;
-		printf("\r\nFlexCAN RX MB configuration failed. result: 0x%lx", result);
+		printf("FlexCAN RX MB configuration failed. result: 0x%lx \r\n", result);
 	}
 }
 
@@ -251,7 +257,7 @@ void transfer_mb_loopback(void)
     @param unsigned long id -
     @return TRUE on success.
  */
-int FLEXCANSendMessage(uint32_t id, uint8_t *pdata, uint8_t dataLengthBytes, FLEXCAN_TX_MSG_FLAGS msgFlags)
+int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_FLAGS msgFlags)
 {
 	//uint8_t data[8];
 	uint32_t result, i;
@@ -274,7 +280,7 @@ int FLEXCANSendMessage(uint32_t id, uint8_t *pdata, uint8_t dataLengthBytes, FLE
 	}
 
 	//txInfo.data_length = 8;
-	txInfo.data_length = dataLengthBytes;
+	txInfo.data_length = dlc;
 
 	/*
 	for (i = 0; i < txInfo.data_length; i++)
@@ -282,15 +288,12 @@ int FLEXCANSendMessage(uint32_t id, uint8_t *pdata, uint8_t dataLengthBytes, FLE
 		data[i] = 10 + i;
 	}*/
 
-	printf("\r\nFlexCAN send config");
-
-
 	/* todo: txIdentifier and txMailboxNum are extra features, figure out they can cooperate with vscp */
 	result = FLEXCAN_DRV_ConfigTxMb(instance, txMailboxNum, &txInfo, txIdentifier);
 
 	if (result)
 	{
-		printf("\nTransmit MB config error. Error Code: 0x%lx", result);
+		printf("Transmit MB config error. Error Code: 0x%lx \r\n", result);
 	}
 	else
 	{
@@ -299,16 +302,17 @@ int FLEXCANSendMessage(uint32_t id, uint8_t *pdata, uint8_t dataLengthBytes, FLE
 		if (result)
 		{
 			numErrors++;
-			printf("\r\nTransmit send configuration failed. result: 0x%lx", result);
+			printf("Transmit send configuration failed. result: 0x%lx \r\n", result);
 		}
 
 		else
 		{
-			printf("\r\nData transmitted: ");
+			printf("Data transmitted: \r\n");
 			for (i = 0; i < txInfo.data_length; i++ )
 			{
 				printf("%02x ", pdata[i]);
 			}
+			printf("\r\n");
 		}
 	}
 	return result;
@@ -317,19 +321,22 @@ int FLEXCANSendMessage(uint32_t id, uint8_t *pdata, uint8_t dataLengthBytes, FLE
 /*!
     @brief Get a VSCP frame.  Use this function to check for
     	   full receive buffer and extract received data into local buffers.
-    @param pid - pointer to id
-    @param pdlc - pointer to data length in bytes
-    @param pdata - pointer to data
+    @param pid - Pointer to buffer that will be populated with receive ID.
+    @param pdlc - Pointer to buffer that will be populated with count of bytes copied in data buffer.
+    @param pdata - Pointer to buffer that will be populated with data if there is any
     @param msgFlags - type of can frame
     @return TRUE on success.
- */
-int FLEXCANReceiveMessage(uint32_t *pid, uint8_t *pdlc, uint8_t *pdata, ECAN_RX_MSG_FLAGS *msgFlags)
+*/
+
+flexcan_code_t FLEXCANReceiveMessage(uint32_t *pid, uint32_t *pdlc, uint32_t *pdata, FLEXCAN_RX_MSG_FLAGS *msgFlags)
 {
 
-	//uint32_t result;
-	//flexcan_data_info_t rxInfo;
+	uint32_t result, temp;
+	flexcan_data_info_t rxInfo;
+	flexcan_msgbuff_t rxMb;
+	//uint8_t dlc;
 
-	/*
+	/* ALL this logic happens at the getCANFrame level
 
 	// Extended CAN frame?
 	if( FLEXCAN_RX_XTD_FRAME == msgFlags ){
@@ -344,9 +351,46 @@ int FLEXCANReceiveMessage(uint32_t *pid, uint8_t *pdlc, uint8_t *pdata, ECAN_RX_
 		printf("\r\n Invalid FLEXCAN_RX_MSG_FLAG, defaulting to STD frame.");
 		rxInfo.msg_id_type = kFlexCanMsgIdStd;
 	}
-	*/
+	 */
 
 
+	/* Attempt to receive a message into rxMb */
 
+	result = FLEXCAN_DRV_RxMessageBuffer(instance, rxMailboxNum, &rxMb);
 
+	/* The FlexCAN uses only an interrupt driven process, but we busy-wait here by,
+	 * polling the CODE field of the message buffer code and status word */
+
+	while(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success) {
+		//can implement a delay in here so that we return false after waiting too long
+		//return FLEXCAN_FAIL;
+	}
+	if (result)
+	{
+		numErrors++;
+		printf("\r\nFLEXCAN receive configuration failed. result: 0x%lx", result);
+	}
+
+	else
+	{	/* Successfully received something! Begin extracting information from message
+	     * buffer which is defined on pg. 1400 of the K64 Sub-Family Ref. Manual */
+
+		*pid = rxMb.msgId;				  // The message ID occupies bits 0-28 (EXT) or 18-28 (STD)
+
+		*pdlc = ((rxMb.cs) >> 16) & 0xF;  // The data length field (DLC) occupies bits 16 - 19
+
+		*msgFlags = ((rxMb.cs) >> 21) & 0x1; // The ID Extended Bit field (IDE) is bit 21
+
+#ifdef DO_PRINT
+		printf("ID: 0x%lx, DLC=%lu, mb_idx=%lu\n",*pid, *pdlc, rxMailboxNum);
+		printf("RX MB data: 0x");
+#endif
+		for (result = 0; result < *pdlc; result++){
+#ifdef DO_PRINT
+		printf("%02x ", rxMb.data[result]);
+#endif
+		pdata[result] = rxMb.data[result];
+		}
+		return FLEXCAN_SUCCESS;
+	}
 }

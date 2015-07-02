@@ -43,22 +43,28 @@
 
 
 /*! @brief FlexCAN Message Buffer ID type*/
-typedef enum flexcan_txmsg_types {
+typedef enum flexcan_tx_msg {
 	FLEXCAN_TX_STD_FRAME,        /*!< Standard ID*/
 	FLEXCAN_TX_XTD_FRAME         /*!< Extended ID*/
 } FLEXCAN_TX_MSG_FLAGS;
 
 /*! @brief FlexCAN Message Buffer ID type*/
-typedef enum flexcan_rxmsg_types {
+typedef enum flexcan_rx_msg {
 	FLEXCAN_RX_RTR_FRAME,        /*!< Standard ID*/
 	FLEXCAN_RX_XTD_FRAME         /*!< Extended ID*/
-} ECAN_RX_MSG_FLAGS;
+} FLEXCAN_RX_MSG_FLAGS;
+
+/*! @brief FlexCAN Message Buffer ID type*/
+typedef enum flexcan_status {
+	FLEXCAN_FAIL,
+	FLEXCAN_SUCCESS
+} flexcan_code_t;
 
 void flexcan_init(void);
 void receive_mb_config(void);
 void transfer_mb_loopback(void);
-int FLEXCANSendMessage(uint32_t id, uint8_t *pdata, uint8_t dataLengthBytes, FLEXCAN_TX_MSG_FLAGS msgFlags);
-int FLEXCANReceiveMessage(uint32_t *pid, uint8_t *pdlc, uint8_t *pdata, ECAN_RX_MSG_FLAGS *msgFlags);
+int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_FLAGS msgFlags);
+flexcan_code_t FLEXCANReceiveMessage(uint32_t *pid, uint32_t *pdlc, uint32_t *pdata, FLEXCAN_RX_MSG_FLAGS *msgFlags);
 
 
 #endif /* SOURCES_FLEXCAN_H_ */

@@ -50,12 +50,12 @@
 void init_flash(void);
 void read_spi_eeprom(void);
 void flexcan_init(void);
+/* these are only here for testing functions in main and will be removed later*/
 void receive_mb_config(void);
 void transfer_mb_loopback(void);
-//void send_data(void);
-
-int FLEXCANSendMessage(uint32_t id, uint8_t *pdata, uint8_t dataLengthBytes, FLEXCAN_TX_MSG_FLAGS msgFlags);
-int FLEXCANReceiveMessage(uint32_t *pid, uint8_t *pdlc, uint8_t *pdata, ECAN_RX_MSG_FLAGS *msgFlags);
+int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_FLAGS msgFlags);
+flexcan_code_t FLEXCANReceiveMessage(uint32_t *pid, uint32_t *pdlc, uint32_t *pdata, FLEXCAN_RX_MSG_FLAGS *msgFlags);
+int8_t getCANFrame(uint32_t *pid, uint8_t *pdlc, uint8_t *pdata);
 
 // ***************************************************************************
 // 							Global Variables for flexcan
@@ -121,12 +121,19 @@ void lptmr_isr_callback(void)
 	lptmrCounter++;
 	// measurement_clock++; /* optional */
 
+#ifdef TIMER_HAS_LONG_PERIOD
+	if(VSCP_LED_BLINK1 == vscp_initledfunc)
+		STATUS_LED_TOGGLE;
+#else
+
 	vscp_statuscnt++;
 
 	if( (vscp_statuscnt > 100) && (vscp_initledfunc == VSCP_LED_BLINK1) ){
-		STATUS_LED_TOGGLE; /* blink the vscp status led */
-		vscp_statuscnt = 0;
+			STATUS_LED_TOGGLE; // blink the vscp status led
+			vscp_statuscnt = 0;
 	}
+#endif
+
 	else if (VSCP_LED_ON == vscp_initledfunc){
 		STATUS_LED_ON;
 	}
@@ -174,7 +181,7 @@ void init() {
 
 	// This is our vscp timer
 	//LPTMR_DRV_SetTimerPeriodUs(LPTMR_INSTANCE,1000); /* Set the timer period for 1ms */
-	LPTMR_DRV_SetTimerPeriodUs(LPTMR_INSTANCE,300000); /* Set the timer period for 1ms */
+	LPTMR_DRV_SetTimerPeriodUs(LPTMR_INSTANCE,300000); /* Set the timer period for 300ms */
 
 	// Specify the callback function when a LPTMR interrupt occurs
 	LPTMR_DRV_InstallCallback(LPTMR_INSTANCE,lptmr_isr_callback);
@@ -202,16 +209,23 @@ int main(void) {
 	unsigned char c;
 	unsigned char *dst;
 
+	FLEXCAN_RX_MSG_FLAGS flags;
+
 	/*! this is just for testing the sendCANMessage function */
 
 	int8_t ret;
-	uint8_t pdata[8];
-	uint32_t id = 0xDEADBEEF; //29-bit only for extended
+	uint8_t pdata8[8];
+	uint32_t pdata32[8];
+
+	uint32_t id = 0x123; //29-bit only for extended
+	uint32_t pid = 0xdeadbeef;
 	uint8_t dlc = 8;
+	uint32_t pdlc;
+	uint8_t pdlc8;
 
 	for (i = 0; i < dlc; i++)
 	{
-		pdata[i] = 10 + i;
+		pdata8[i] = 10 + i;
 	}
 
 	// initialize the mcu, switched, 1ms clock, etc
@@ -226,7 +240,7 @@ int main(void) {
 	CAN0_STB_EN;
 	CAN0_STB_LO;
 
-	//should not need
+	//can take this out once vscp fully implemented
 	vscp_initledfunc = VSCP_LED_BLINK1; //0x02
 
 	// Check VSCP persistent storage and
@@ -244,27 +258,52 @@ int main(void) {
 
 	// Initialize vscp
 	//vscp_init(); /* defined in vscp_firmware, line 118 */
-	receive_mb_config();
 
 	while(1)
 	{
 
 		vscp_imsg.flags = 0;
-		vscp_getEvent(); //fetch one vscp event -> vscp_imsg struct
+		//vscp_getEvent(); //fetch one vscp event -> vscp_imsg struct
 
 		//read_spi_eeprom();
 		//send_data();
 
 		/* do this every 1ms tick */
+
 		if(currentCounter != lptmrCounter)
 		{
-			ret =  FLEXCANSendMessage(id, pdata, dlc, FLEXCAN_TX_STD_FRAME);
+			printf("Sending message \r\n");
+			//ret =  FLEXCANSendMessage(id, dlc, pdata8, FLEXCAN_TX_STD_FRAME);
+			ret =  FLEXCANSendMessage(pid, dlc, pdata8, FLEXCAN_TX_XTD_FRAME); //extended deadbeef msg
 
-			// FlexCAN receive configuration
 
-			transfer_mb_loopback();
+			printf("Receiving message \r\n");
 
-			//ret = sendCANFrame(id, dlc, pdata); //int8_t sendCANFrame(uint32_t id, uint8_t dlc, uint8_t *pdata);
+
+			/****************************************************
+			 * FLEXCANReceiveMessage is now fully functional
+			 */
+
+			/*
+			ret =  FLEXCANReceiveMessage(&pid, &pdlc, pdata32, &flags);
+
+			printf("ID: 0x%lx, DLC=%lu \r\n",pid, pdlc);
+			printf("nRX MB data: 0x\r\n");
+			for (i = 0; i < pdlc; i++){
+				printf("%02x ", pdata32[i]);
+
+			}*/
+
+			ret = getCANFrame(&pid, &pdlc8, pdata8);
+
+			printf("ID: 0x%lx, DLC=%lu \r\n",pid, pdlc8);
+			printf("nRX MB data: 0x\r\n");
+			for (i = 0; i < pdlc8; i++){
+				printf("%02x ", pdata8[i]);
+
+			}
+			printf("\r\n");
+
 			//test_vscp_externals();
 			currentCounter = lptmrCounter;
 		}
@@ -380,6 +419,8 @@ void BOARD_SW_IRQ_HANDLER(void)
 {
 	// Clear external interrupt flag.
 	GPIO_DRV_ClearPinIntFlag(BOARD_SW_GPIO);
+
+	vscp_initledfunc = VSCP_LED_ON;
 
 	// If we haven't already been initialized
 	if(VSCP_STATE_INIT != vscp_node_state) {
