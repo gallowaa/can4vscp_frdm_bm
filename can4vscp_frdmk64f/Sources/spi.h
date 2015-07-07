@@ -12,7 +12,11 @@
 #include "main.h"
 #include "fsl_dspi_master_driver.h"
 
-void read_spi_eeprom();
+#define WRITE 	0x02
+#define WREN 	0x06
+
+
+uint8_t spi_eeprom_read(uint8_t addr1, uint8_t addr2);
 
 /*******************************************************************************
  * Definitions for SPI

@@ -53,6 +53,7 @@ Thumbs.db
 *.dylib
 
 # Executables
+*.elf
 *.exe
 *.out
 *.app
@@ -61,4 +62,5 @@ Thumbs.db
 
 #Don't track these
 RemoteSystemsTempFiles
+can4vscp_frdmk64f/Debug/Sources/*
 .metadata

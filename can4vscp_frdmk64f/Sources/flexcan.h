@@ -60,7 +60,7 @@ typedef enum flexcan_status {
 	FLEXCAN_SUCCESS
 } flexcan_code_t;
 
-void flexcan_init(void);
+void init_flexcan(void);
 void receive_mb_config(void);
 void transfer_mb_loopback(void);
 int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_FLAGS msgFlags);

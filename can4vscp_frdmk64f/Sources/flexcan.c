@@ -80,7 +80,7 @@ flexcan_time_segment_t bitRateTable48Mhz[] = {
 };
 
 
-void flexcan_init(void) {
+void init_flexcan(void) {
 
 	numErrors = 0;
 

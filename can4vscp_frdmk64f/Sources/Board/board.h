@@ -101,6 +101,13 @@
 #define BOARD_SW_IRQ_NUM            PORTC_IRQn
 #define BOARD_SW_IRQ_HANDLER        PORTC_IRQHandler
 
+/* Define the port interrupt number for the board switches */
+#define BOARD_SW_GPIO_3              		kGpioSW3
+#define BOARD_SW_IRQ_NUM_3            		PORTA_IRQn
+#define BOARD_SW_IRQ_HANDLER_NOTUSED        PORTA_IRQHandler
+
+
+
 /* Define print statement to inform user which switch to press for
  * power_manager_hal_demo and power_manager_rtos_demo
  */

@@ -109,6 +109,9 @@
 #define STATUS_LED_TOGGLE 		LED1_TOGGLE
 
 
+#define INIT_BTN_EN 		(GPIO_DRV_InputPinInit(&switchPins[0]))					 /*!< init sw2 as input */
+
+
 /** FOR 1ms clock check on scope **/
 
 #define CLOCK_PIN_EN  		(GPIO_DRV_OutputPinInit(&gpioPins[0]))  				  /*!< clk pin en */
@@ -118,9 +121,11 @@
 
 /** FOR SPI0 **/
 
-#define SPI0_CS_EN  		(GPIO_DRV_OutputPinInit(&gpioPins[1]))  				  /*!< Enable target SPI0 CS gpio pin */
-#define SPI0_CS_DESELECT 	(GPIO_DRV_WritePinOutput(gpioPins[1].pinName, 1))         /*!< Turn off cs */
-#define SPI0_CS_SELECT 		(GPIO_DRV_WritePinOutput(gpioPins[1].pinName, 0))         /*!< Turn on cs */
+//Don't need a gpio anymore. The problem was that .isChipSelectContinuous was set to false. Fixed by setting to true.
+
+//#define SPI0_CS_EN  		(GPIO_DRV_OutputPinInit(&gpioPins[1]))  				  /*!< Enable target SPI0 CS gpio pin */
+//#define SPI0_CS_DESELECT 	(GPIO_DRV_WritePinOutput(gpioPins[1].pinName, 1))         /*!< Turn off cs */
+//#define SPI0_CS_SELECT 		(GPIO_DRV_WritePinOutput(gpioPins[1].pinName, 0))         /*!< Turn on cs */
 
 
 /** FOR FRDM-CAN-VSCP Shield CAN PHY Standby pin **/

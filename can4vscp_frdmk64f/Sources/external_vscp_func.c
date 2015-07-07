@@ -188,10 +188,12 @@ uint8_t vscp_getSubMinorVersion( void )
  */
 uint8_t vscp_getGUID(uint8_t idx)	/* todo: Need to figure out some of the GUID details, but we can read the mac from eeprom here */
 {
-	read_spi_eeprom();
-	return 0;
+	//return eeprom_read(VSCP_EEPROM_REG_GUID + idx);
 
-	//return 0;
+	/* VSCP flash base, get 1 byte into GUID */
+
+	//spi_eeprom_read();
+	return 0;
 }
 
 // Only if write to protected
