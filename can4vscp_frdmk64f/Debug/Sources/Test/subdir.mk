@@ -4,12 +4,18 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../Sources/Test/test_flexcan_functions.c \
+../Sources/Test/test_spi_functions.c \
 ../Sources/Test/test_vscp_functions.c 
 
 OBJS += \
+./Sources/Test/test_flexcan_functions.o \
+./Sources/Test/test_spi_functions.o \
 ./Sources/Test/test_vscp_functions.o 
 
 C_DEPS += \
+./Sources/Test/test_flexcan_functions.d \
+./Sources/Test/test_spi_functions.d \
 ./Sources/Test/test_vscp_functions.d 
 
 

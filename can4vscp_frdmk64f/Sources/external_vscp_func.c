@@ -186,14 +186,9 @@ uint8_t vscp_getSubMinorVersion( void )
 /*!
     Get GUID from permanent storage
  */
-uint8_t vscp_getGUID(uint8_t idx)	/* todo: Need to figure out some of the GUID details, but we can read the mac from eeprom here */
+uint8_t vscp_getGUID(uint8_t idx)
 {
-	//return eeprom_read(VSCP_EEPROM_REG_GUID + idx);
-
-	/* VSCP flash base, get 1 byte into GUID */
-
-	//spi_eeprom_read();
-	return 0;
+	return spi_eeprom_read(VSCP_EEPROM_REG_GUID + idx);
 }
 
 // Only if write to protected
@@ -267,8 +262,7 @@ uint8_t vscp_getBootLoaderAlgorithm( void )
  */
 uint8_t vscp_getBufferSize(void)
 {
-	// return CAN_BUFFER_SIZE; //Standard CAN frame
-	return 0; /* todo: vscp_function */
+	return CAN_BUFFER_SIZE; //Standard CAN frame
 }
 
 
@@ -287,7 +281,7 @@ uint8_t vscp_getRegisterPagesUsed( void )
 uint8_t vscp_getMDF_URL(uint8_t idx)
 {
 	return vscp_deviceURL[ idx ];
-	//return 0; /* todo: vscp_getMDF_URL */
+	//return 0; /* todo: vscp_getMDF_URL, how does this work? the device url can only be 16 bytes? */
 }
 
 /*!

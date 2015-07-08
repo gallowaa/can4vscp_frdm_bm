@@ -45,17 +45,22 @@
 // 								Prototypes
 // ***************************************************************************
 
+void hardware_init();
+static void init_lptmr();
+
 /*! This is only here because init_flash is called from main directly.*/
 /*! The other flash_al.c functions are called from the external vscp functions in external_vscp_func.c */
 void init_flash(void);
 
 
-uint8_t spi_eeprom_read(uint8_t addr1, uint8_t addr2);
+//uint8_t spi_eeprom_read(uint8_t addr1, uint8_t addr2);
+//void spi_eeprom_write(uint8_t data, uint8_t addr);
 
 
 void init_flexcan(void);
 void init_spi();
-void init_lptmr();
+void test_spi();
+
 /* these are only here for testing functions in main and will be removed later*/
 void receive_mb_config(void);
 void transfer_mb_loopback(void);
@@ -63,13 +68,6 @@ int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_
 flexcan_code_t FLEXCANReceiveMessage(uint32_t *pid, uint32_t *pdlc, uint32_t *pdata, FLEXCAN_RX_MSG_FLAGS *msgFlags);
 int8_t getCANFrame(uint32_t *pid, uint8_t *pdlc, uint8_t *pdata);
 
-// ***************************************************************************
-// 							Global Variables for flexcan
-// ***************************************************************************
-
-//#define can
-//#ifdef can
-//#endif
 
 
 // ***************************************************************************
@@ -150,7 +148,7 @@ void lptmr_isr_callback(void)
  *
  */
 
-void hardware_init(void) {
+void hardware_init() {
 
 	/* enable clock for PORTs */
 	CLOCK_SYS_EnablePortClock(PORTA_IDX);
@@ -167,6 +165,15 @@ void hardware_init(void) {
 	init_spi();
 	init_flexcan();
 	init_lptmr();
+
+	STATUS_LED_EN; //LED1_EN;
+	CLOCK_PIN_EN;  //GPIO_DRV_OutputPinInit(&gpioPins[0]);  /* scope this pin to test clk */
+	//SPI0_CS_EN;  //GPIO_DRV_OutputPinInit(&gpioPins[1]);  /* this is the CS for SPI0 */
+	INIT_BTN_EN;   //GPIO_DRV_InputPinInit(&switchPins[0]); /* init sw2 as input */
+
+	// Enable a gpio for taking STB low
+	CAN0_STB_EN;
+	CAN0_STB_LO;
 }
 
 
@@ -174,7 +181,7 @@ void hardware_init(void) {
  * @brief lptmr initialization done here. lptmr is used as vscp 1ms clock.
  *
  */
-void init_lptmr() {
+static void init_lptmr() {
 
 	//Initialize LPTMR
 	LPTMR_DRV_Init(LPTMR_INSTANCE, &lptmrState, &lptmrUserConfig);
@@ -200,7 +207,7 @@ int main(void) {
 	uint32_t destAdrss;            /*! Address of the target location     */
 	uint32_t i, failAddr;          /*! comment */
 	uint32_t FlashValue;		   /*! comment */
-	uint32_t currentCounter = 0;   /*! comment */
+	uint32_t currentCounter = 0;   /*! do things according to 1ms lptmr */
 
 	uint8_t c1,c2;
 	unsigned char c;
@@ -208,113 +215,46 @@ int main(void) {
 
 	FLEXCAN_RX_MSG_FLAGS flags;
 
-	/*! this is just for testing the sendCANMessage function */
 
-	int8_t ret;
-	uint8_t pdata8[8];
-	uint32_t pdata32[8];
 
-	uint32_t id = 0x123; //29-bit only for extended
-	uint32_t pid = 0x3ffff;
-	uint8_t dlc = 8;
-	uint32_t pdlc;
-	uint8_t pdlc8;
-
-	for (i = 0; i < dlc; i++)
-	{
-		pdata8[i] = 10 + i;
-	}
-
-	// initialize the mcu, switched, 1ms clock, etc
-	//init();
-
-	// Init basic hardware.
+	// Init mcu and peripherals
 	hardware_init();
-
-	STATUS_LED_EN; //LED1_EN;
-	CLOCK_PIN_EN; //GPIO_DRV_OutputPinInit(&gpioPins[0]); /* scope this pin to test clk */
-	//SPI0_CS_EN;   //GPIO_DRV_OutputPinInit(&gpioPins[1]); /* this is the CS for SPI0 */
-	INIT_BTN_EN;  //GPIO_DRV_InputPinInit(&switchPins[0]); /* init sw2 as input */
-
-	// Enable a gpio for taking STB low
-	CAN0_STB_EN;
-	CAN0_STB_LO;
 
 	//can take this out once vscp fully implemented
 	vscp_initledfunc = VSCP_LED_BLINK1; //0x02
 
 	// Check VSCP persistent storage and
 	// restore if needed
+
+#ifdef DO_VSCP
 	if( !vscp_check_pstorage() ){
 
-		//init_flash();
-		/*
+		init_flash();
 		// Spoiled or not initialized - reinitialize
 		init_app_eeprom();
 		init_app_ram();     // Needed because some ram positions
-		// are initialized from EEPROM
-		 */
+							// are initialized from EEPROM
 	}
-
 	// Initialize vscp
-	//vscp_init(); /* defined in vscp_firmware, line 118 */
+	vscp_init(); /* defined in vscp_firmware, line 118 */
+
+#endif
+
 
 	printf("Hello!\r\n");
 
 	while(1)
 	{
-		printf("Enter an op-code, then address:\r\n");
-		c1 = GETCHAR();
-		printf("received %c = hex %x\r\n", c1, c1);
-		c2 = GETCHAR();
-		printf("received %c = hex %x\r\n", c2, c2);
+#ifdef DO_VSCP
+		vscp_imsg.flags = 0;
+		vscp_getEvent(); //fetch one vscp event -> vscp_imsg struct
+#endif
 
-		//vscp_imsg.flags = 0;
-		//vscp_getEvent(); //fetch one vscp event -> vscp_imsg struct
-
-		spi_eeprom_read(c1, c2);
-		//spi_eeprom_write();
-		//send_data();
+		test_spi();
 
 		/* do this every 1ms tick */
-
 		if(currentCounter != lptmrCounter)
 		{
-			//printf("Sending message \r\n");
-			//ret =  FLEXCANSendMessage(id, dlc, pdata8, FLEXCAN_TX_STD_FRAME);
-			//ret =  FLEXCANSendMessage(pid, dlc, pdata8, FLEXCAN_TX_XTD_FRAME); //extended deadbeef msg
-
-			if('f' == c1 ){
-
-				printf("Receiving message \r\n");
-
-
-				/****************************************************
-				 * FLEXCANReceiveMessage is now fully functional
-				 */
-
-				/*
-			ret =  FLEXCANReceiveMessage(&pid, &pdlc, pdata32, &flags);
-
-			printf("ID: 0x%lx, DLC=%lu \r\n",pid, pdlc);
-			printf("nRX MB data: 0x\r\n");
-			for (i = 0; i < pdlc; i++){
-				printf("%02x ", pdata32[i]);
-
-			}*/
-
-				ret = getCANFrame(&pid, &pdlc8, pdata8);
-
-				printf("ID: 0x%lx, DLC=%lu \r\n",pid, pdlc8);
-				printf("RX MB data: 0x");
-				for (i = 0; i < pdlc8; i++){
-					printf("%02x ", pdata8[i]);
-
-				}
-				printf("\r\n");
-			}
-
-			//test_vscp_externals();
 			currentCounter = lptmrCounter;
 		}
 
@@ -416,7 +356,6 @@ int main(void) {
 
 	/* Never leave main */
 	return 0;
-//#endif
 }
 
 

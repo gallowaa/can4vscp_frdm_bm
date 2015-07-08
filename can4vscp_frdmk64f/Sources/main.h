@@ -88,8 +88,13 @@
 #define VSCP_FLASH_REG_MANUFACTUR_SUBID3	0x10
 
 // The following can be stored in program ROM or EEPROM
+// AG: I am keeping this in eeprom since the EUI-48
+// 	   comes from eeprom already.
 
-#define VSCP_FLASH_REG_GUID 			0x11 	// Start of GUID MSB of 16
+
+/* todo: Need to figure out how I will lay out GUID in memory since EUI-48 area is write protected */
+
+#define VSCP_EEPROM_REG_GUID 			0x11 	// Start of GUID MSB of 16
 												//		 0x11 - 0x20
 
 #define VSCP_FLASH_REG_DEVICE_URL		0x21	// Start of Device URL storage

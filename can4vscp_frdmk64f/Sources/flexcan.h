@@ -36,6 +36,8 @@
 #include "main.h"
 #include "fsl_flexcan_driver.h"
 
+#define CAN_BUFFER_SIZE 8
+
 /* NOTE: The CAN Message flags are implemented differently due to the Flexcan api being higher level
  * than the or'ing of bits in the paris module. The KSDK uses structs to store configuration data such
  * as the ID type. Logic is implemented in flexcan.c to mimic the behaviour of the flags in
