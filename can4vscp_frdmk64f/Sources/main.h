@@ -57,11 +57,13 @@
 //#include "flash_al.h"
 //#include "SSD_FTFx.h"
 
+/* VSCP application level */
+#define PAGES 1
+
+/* VSCP core features */
 /* This section replaces EEPROM Storage from can4vscp_paris/main.h with FLASH
  * There is a vscp wrapper that calls readEEPROM, readFLASH
  */
-
-
 
 #define VSCP_FLASH_BOOTLOADER_FLAG		0x00 //reserved for bootloader flag
 
@@ -158,6 +160,9 @@ extern uint8_t sendTimer;  // Timer for CAN send
 void test_vscp_externals();
 
 void vscp_FLASHFlush();
+
+void init_app_eeprom();
+void init_app_ram( void );
 
 
 #endif /* SOURCES_MAIN_H_ */

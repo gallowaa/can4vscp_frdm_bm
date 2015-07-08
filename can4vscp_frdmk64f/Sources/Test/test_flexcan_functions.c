@@ -6,8 +6,14 @@
  */
 
 #include "main.h"
+#include "flexcan.h"
+
+int8_t sendCANFrame(uint32_t id, uint8_t dlc, uint8_t *pdata);
+int8_t getCANFrame(uint32_t *pid, uint8_t *pdlc, uint8_t *pdata);
 
 void test_flexcan(void) {
+
+	FLEXCAN_RX_MSG_FLAGS flags;
 
 	/*! this is just for testing the sendCANMessage function */
 	int i;

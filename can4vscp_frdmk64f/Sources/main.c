@@ -104,8 +104,6 @@ lptmr_user_config_t lptmrUserConfig =
 };
 
 
-
-
 // ***************************************************************************
 // 						Subroutines & ISRs not related to VSCP
 // ***************************************************************************
@@ -158,6 +156,14 @@ void hardware_init() {
 	/* Init board clock */
 	BOARD_ClockInit();
 	dbg_uart_init();
+
+	/* OSA_Init();
+	 * Call OSA_Init to use built in time utilities.
+	 * This is needed for delay functions, but OSA init sets up
+	 * the lptmr with a different clock source than is desired for our 1ms clock.
+	 * Going to skip this for first pass. Might have to enable a new timer (PIT, PDB?) to maintain
+	 * the 1 ms clock while using the OSA.
+	 */
 
 	configure_spi_pins(0); 	// Configure SPI pins for talking to EEPROM w/ MAC address
 	configure_can_pins(0);  // Configure CAN pins
@@ -213,10 +219,6 @@ int main(void) {
 	unsigned char c;
 	unsigned char *dst;
 
-	FLEXCAN_RX_MSG_FLAGS flags;
-
-
-
 	// Init mcu and peripherals
 	hardware_init();
 
@@ -250,7 +252,7 @@ int main(void) {
 		vscp_getEvent(); //fetch one vscp event -> vscp_imsg struct
 #endif
 
-		test_spi();
+
 
 		/* do this every 1ms tick */
 		if(currentCounter != lptmrCounter)

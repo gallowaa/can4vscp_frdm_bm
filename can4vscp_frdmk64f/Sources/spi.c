@@ -85,7 +85,7 @@ void init_spi() {
     @param addr - address to write
     @return TRUE on success.
  */
-void spi_eeprom_write(uint8_t data, uint8_t addr){
+void spi_eeprom_write(uint8_t addr, uint8_t data){
 
 	uint32_t i;
 	dspi_status_t dspiResult;

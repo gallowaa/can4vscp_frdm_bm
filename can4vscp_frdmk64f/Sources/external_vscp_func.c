@@ -13,6 +13,7 @@
 
 #define CAN_SUCCESS 0
 
+extern volatile unsigned long measurement_clock; // Clock for measurements
 uint8_t buffer[BUFFER_SIZE_BYTE]; /*! Buffer for program */
 
 /* These functions are deliberately not prototyped by vscp_firmware.h,
@@ -193,14 +194,14 @@ uint8_t vscp_getGUID(uint8_t idx)
 
 // Only if write to protected
 // locations is enabled
-#ifdef ENABLE_WRITE_2PROTECTED_LOCATIONS
+//#ifdef ENABLE_WRITE_2PROTECTED_LOCATIONS
 void vscp_setGUID(uint8_t idx, uint8_t data)
 {
 	if (idx > 15) return;
-	writeFLASH(VSCP_FLASH_REG_GUID + idx, data);
+	spi_eeprom_write(VSCP_EEPROM_REG_GUID + idx, data);		// writeFLASH(VSCP_FLASH_REG_GUID + idx, data);
 
 }
-#endif
+//#endif
 
 /*!
     User ID 0 idx=0
@@ -253,7 +254,7 @@ void vscp_setManufacturerId( uint8_t idx, uint8_t data ) {
  */
 uint8_t vscp_getBootLoaderAlgorithm( void )
 {
-	return 0; /* todo: vscp_function */
+	return 0; /* bootloader not implemented */
 }
 
 
@@ -271,7 +272,7 @@ uint8_t vscp_getBufferSize(void)
  */
 uint8_t vscp_getRegisterPagesUsed( void )
 {
-    return 1; // One pae used
+    return PAGES; // One page used
 }
 
 /*!
@@ -373,7 +374,7 @@ uint8_t vscp_getPageSelect(uint8_t idx)
  */
 void vscp_setPageSelect(uint8_t idx, uint8_t data)
 {
-	return; /* todo: vscp_function */
+	return; /* todo: function does not appear in can4vscp_paris module */
 }
 
 /*!
@@ -381,10 +382,8 @@ void vscp_setPageSelect(uint8_t idx, uint8_t data)
  */
 void doWork(void)
 {
-	/* todo: doWork */
     if ( VSCP_STATE_ACTIVE == vscp_node_state ) {
 		;
-
 		/* read DHT temp/humidity sensor or the like */
     }
 }
@@ -454,6 +453,7 @@ void vscp_getMatrixInfo(char *pData)
 {
 	uint8_t i;
 
+#ifdef FIRMWARE_DM
 	vscp_omsg.data[ 0 ] = 7; // Matrix is seven rows
 	vscp_omsg.data[ 1 ] = 72; //Matrix start offset
 
@@ -461,11 +461,12 @@ void vscp_getMatrixInfo(char *pData)
 	for(i=2; i<8; i++){
 		vscp_omsg.data[ i ] = 0;
 	}
-
+#else
 	// Alternatively, if module is not to implement a DM
- /* for(i=0; i<8; i++){
+	for(i=0; i<8; i++){
 		pData[ i ] = 0;
-	}*/
+	}
+#endif
 
 }
 
@@ -502,7 +503,7 @@ void vscp_getEmbeddedMdfInfo(void)
  */
 void vscp_goBootloaderMode( uint8_t algorithm )
 {
-	return; /* todo: vscp_function */
+	return;
 }
 
 /*!
@@ -530,7 +531,7 @@ uint8_t vscp_getSubzone(void)
 */
 uint32_t vscp_getFamilyCode(void)
 {
-	return 0L; /* todo: vscp_function */
+	return 0L;
 }
 
 
@@ -541,45 +542,42 @@ uint32_t vscp_getFamilyCode(void)
 */
 uint32_t vscp_getFamilyType(void)
 {
-	return 0; /* todo: vscp_function */
+	return 0;
 }
 
 
 /*!
     Restore defaults
     If 0x55/0xaa is written to register location
-    162 within one second defaults should be loaded
+    162 within one second, defaults should be loaded
     by the device.
  */
 void vscp_restoreDefaults(void)
 {
-	/*
 	init_app_eeprom();
 	init_app_ram();
-	*/
-	return; /* todo: vscp_function */
+	return;
 }
-
 
 #ifdef DROP_NICKNAME_EXTENDED_FEATURES
 
-	// Do a hard reset of the device
-	void vscp_hardreset(void)
-	{
-		return; /* todo: vscp_function */
-	}
+// Do a hard reset of the device
+void vscp_hardreset(void)
+{
+	NVIC_SystemReset();
+}
 
-	// Wait for milliseconds
-	void vscp_wait_ms(uint16_t ms)
-	{
-		return; /* todo: vscp_function */
-	}
+// Wait for milliseconds
+void vscp_wait_ms(uint16_t ms)
+{
+	OSA_TimeDelay(ms); // Max delay of 65,536ms
+}
 
-	// Wait for seconds
-	void vscp_wait_s(uint16_t sec)
-	{
-		return; /* todo: vscp_function */
-	}
+// Wait for seconds
+void vscp_wait_s(uint16_t sec)
+{
+	OSA_TimeDelay(sec*1000) //Up to 65.5s
+}
 #endif
 
 
@@ -592,4 +590,106 @@ void vscp_restoreDefaults(void)
 void vscp_FLASHFlush()
 {
 	writeFLASH(VSCP_FLASH_BASE, buffer);
+}
+
+
+void init_app_ram( void )
+{
+	uint8_t i;
+
+#ifdef THIS_IS_AN_EXAMPLE
+    measurement_clock = 0;      // start a new meaurement cycle
+
+    seconds = 0;
+    minutes = 0;
+    hours = 0;
+
+    relay_pulse_flags = 0;      // No pulse outputs yet
+
+    // Clear timers
+    for ( i = 0; i < 8; i++ ) {
+        relay_pulse_timer[ i ] = 0;
+        relay_protection_timer[ i ] = 0;
+    }
+
+    for ( i=0; i<7; i++ ) {
+
+        // Init pulsed relays
+        if ( eeprom_read( VSCP_EEPROM_END + REG_RELAY0_CONTROL + i ) &
+                                RELAY_CONTROLBIT_PULSE ) {
+
+            relay_pulse_flags |= (1<<i); // Enable pulse output
+            relay_pulse_timer[ i ] =
+                eeprom_read( VSCP_EEPROM_END + REG_RELAY0_PULSE_TIME_MSB + i ) * 256 +
+                eeprom_read( VSCP_EEPROM_END + REG_RELAY0_PULSE_TIME_LSB + i );
+        }
+
+        // Init protection timers
+        if ( eeprom_read(VSCP_EEPROM_END + REG_RELAY5_CONTROL + i ) & RELAY_CONTROLBIT_PROTECTION) {
+            relay_protection_timer[ i ] =
+                eeprom_read(VSCP_EEPROM_END + REG_RELAY5_PROTECTION_TIME_MSB + i ) * 256 +
+                eeprom_read(VSCP_EEPROM_END + REG_RELAY5_PROTECTION_TIME_LSB + i );
+        }
+
+    }
+#endif
+
+}
+
+
+
+void init_app_eeprom(void)
+{
+
+#ifdef THIS_IS_AN_EXAMPLE
+    unsigned char i, j;
+
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY_ZONE, 0 );
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY_SUBZONE, 0 );
+
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY0_CONTROL,
+                    RELAY_CONTROLBIT_ONEVENT |
+                    RELAY_CONTROLBIT_OFFEVENT |
+                    RELAY_CONTROLBIT_ENABLED );
+
+    ...
+
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY7_CONTROL,
+                    RELAY_CONTROLBIT_ONEVENT |
+                    RELAY_CONTROLBIT_OFFEVENT |
+                    RELAY_CONTROLBIT_ENABLED );
+
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY0_PULSE_TIME_MSB, 0 );
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY0_PULSE_TIME_LSB, 0 );
+
+    ...
+
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY7_PULSE_TIME_MSB, 0 );
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY7_PULSE_TIME_LSB, 0  );
+
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY0_PROTECTION_TIME_MSB, 0 );
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY0_PROTECTION_TIME_LSB, 0 );
+
+    ...
+
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY7_PROTECTION_TIME_MSB, 0 );
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY7_PROTECTION_TIME_LSB, 0 );
+
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY0_ZONE, 0 );
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY0_SUBZONE, 0 );
+
+    ...
+
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY7_ZONE, 0 );
+    eeprom_write( VSCP_EEPROM_END + REG_RELAY7_SUBZONE, 0 );
+
+    // * * * Decision Matrix * * *
+    // All elements disabled.
+    for ( i = 0; i < DESCION_MATRIX_ROWS; i++ ) {
+        for ( j = 0; j < 8; j++ ) {
+            eeprom_write( VSCP_EEPROM_END + REG_DESCION_MATRIX + i * 8 + j, 0 );
+        }
+    }
+#endif
+
 }

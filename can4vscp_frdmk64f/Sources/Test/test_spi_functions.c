@@ -15,7 +15,7 @@ void test_spi_generic(){
 	c1 = GETCHAR();
 
 	if('w' == c1)
-		spi_eeprom_write(c1, 0x0A);
+		spi_eeprom_write(0x0A,c1);
 
 
 	printf("Enter an op-code, then address:\r\n");
