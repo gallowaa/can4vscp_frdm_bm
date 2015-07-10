@@ -90,7 +90,8 @@ enum _gpio_pins_pinNames{
   kGpioLED1     = GPIO_MAKE_PIN(GPIOE_IDX, 26U),
   kGpioLED2     = GPIO_MAKE_PIN(GPIOB_IDX, 22U),
   kGpioLED3     = GPIO_MAKE_PIN(GPIOB_IDX, 21U),
-  kGpioProbeMe  = GPIO_MAKE_PIN(GPIOC_IDX, 16U),
+  kGpioProbeMe  = GPIO_MAKE_PIN(GPIOC_IDX, 4U),
+  //kGpioProbeMe  = GPIO_MAKE_PIN(GPIOC_IDX, 16U),
   kSpi0cs  		= GPIO_MAKE_PIN(GPIOD_IDX, 0U),
   kCan0stb 		= GPIO_MAKE_PIN(GPIOB_IDX, 9U),
 };  

@@ -12,6 +12,7 @@ RM := rm -rf
 -include Sources/Test/subdir.mk
 -include Sources/Flash_Driver/subdir.mk
 -include Sources/Board/subdir.mk
+-include Sources/Accel/subdir.mk
 -include Sources/subdir.mk
 -include Project_Settings/Startup_Code/subdir.mk
 -include subdir.mk
@@ -47,6 +48,9 @@ endif
 -include ../makefile.defs
 
 # Add inputs and outputs from these tool invocations to the build variables 
+SECONDARY_SIZE += \
+can4vscp_frdmk64f.siz \
+
 
 # All Target
 all: can4vscp_frdmk64f.elf secondary-outputs
@@ -59,12 +63,18 @@ can4vscp_frdmk64f.elf: $(OBJS) $(USER_OBJS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
+can4vscp_frdmk64f.siz: can4vscp_frdmk64f.elf
+	@echo 'Invoking: Cross ARM GNU Print Size'
+	arm-none-eabi-size --format=berkeley --totals "can4vscp_frdmk64f.elf"
+	@echo 'Finished building: $@'
+	@echo ' '
+
 # Other Targets
 clean:
-	-$(RM) $(C++_DEPS)$(OBJS)$(C_DEPS)$(ASM_DEPS)$(CC_DEPS)$(CPP_DEPS)$(CXX_DEPS)$(C_UPPER_DEPS)$(S_UPPER_DEPS) can4vscp_frdmk64f.elf
+	-$(RM) $(SECONDARY_SIZE)$(C++_DEPS)$(OBJS)$(C_DEPS)$(ASM_DEPS)$(CC_DEPS)$(CPP_DEPS)$(CXX_DEPS)$(C_UPPER_DEPS)$(S_UPPER_DEPS) can4vscp_frdmk64f.elf
 	-@echo ' '
 
-secondary-outputs:
+secondary-outputs: $(SECONDARY_SIZE)
 
 .PHONY: all clean dependents
 .SECONDARY:

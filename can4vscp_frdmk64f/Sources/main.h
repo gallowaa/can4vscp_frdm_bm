@@ -36,23 +36,32 @@
 #ifndef SOURCES_MAIN_H_
 #define SOURCES_MAIN_H_
 
-#include <stdio.h>
-#include <stdint.h>
-#include <math.h>
-
 /** vscp_firmware **/
 #include <vscp_firmware.h>
 #include <vscp_class.h>
 #include <vscp_type.h>
 
+/** core **/
+#include <assert.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <math.h>
+
 
 #include "pin_mux.h"
 #include "board.h"
-
+#include "fsl_os_abstraction.h"
 #include "fsl_device_registers.h"
 #include "fsl_clock_manager.h"
 #include "fsl_debug_console.h"
 #include "fsl_lptmr_driver.h"
+#include "fsl_pit_driver.h"
+#include "fsl_flexcan_driver.h"
+#include "fsl_uart_driver.h"
+#include "fsl_dspi_shared_function.h"
+#include "fsl_device_registers.h"
+#include "fsl_fxos8700_driver.h"
 
 //#include "flash_al.h"
 //#include "SSD_FTFx.h"

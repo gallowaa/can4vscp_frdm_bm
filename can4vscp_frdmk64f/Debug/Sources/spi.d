@@ -18,6 +18,8 @@ Sources/spi.o: ../Sources/spi.c ../Sources/spi.h ../Sources/main.h \
  ../SDK/platform/devices/MK64F12/include/fsl_bitaccess.h \
  ../SDK/platform/devices/MK64F12/include/MK64F12_features.h \
  C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_gpio_hal.h \
+ C:\Freescale\KSDK_1.2.0/platform/osa/inc/fsl_os_abstraction.h \
+ C:\Freescale\KSDK_1.2.0/platform/osa/inc/fsl_os_abstraction_bm.h \
  C:\Freescale\KSDK_1.2.0/platform/system/inc/fsl_clock_manager.h \
  C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_sim_hal.h \
  c:\freescale\ksdk_1.2.0\platform\hal\src\sim\mk64f12\fsl_sim_hal_mk64f12.h \
@@ -27,12 +29,20 @@ Sources/spi.o: ../Sources/spi.c ../Sources/spi.h ../Sources/main.h \
  C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_mcg_hal.h \
  C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_osc_hal.h \
  ../Sources/Utilities/fsl_debug_console.h \
- C:\Freescale\KSDK_1.2.0/platform/osa/inc/fsl_os_abstraction.h \
- C:\Freescale\KSDK_1.2.0/platform/osa/inc/fsl_os_abstraction_bm.h \
  C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_lptmr_driver.h \
  C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_lptmr_hal.h \
- C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_dspi_master_driver.h \
- C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_dspi_hal.h
+ C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_pit_driver.h \
+ C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_pit_hal.h \
+ C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_flexcan_driver.h \
+ C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_flexcan_hal.h \
+ C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_uart_driver.h \
+ C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_uart_hal.h \
+ C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_dspi_shared_function.h \
+ C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_dspi_hal.h \
+ ../Sources/Accel/fsl_fxos8700_driver.h \
+ C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_i2c_master_driver.h \
+ C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_i2c_hal.h \
+ C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_dspi_master_driver.h
 
 ../Sources/spi.h:
 
@@ -80,6 +90,10 @@ C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_port_hal.h:
 
 C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_gpio_hal.h:
 
+C:\Freescale\KSDK_1.2.0/platform/osa/inc/fsl_os_abstraction.h:
+
+C:\Freescale\KSDK_1.2.0/platform/osa/inc/fsl_os_abstraction_bm.h:
+
 C:\Freescale\KSDK_1.2.0/platform/system/inc/fsl_clock_manager.h:
 
 C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_sim_hal.h:
@@ -98,14 +112,30 @@ C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_osc_hal.h:
 
 ../Sources/Utilities/fsl_debug_console.h:
 
-C:\Freescale\KSDK_1.2.0/platform/osa/inc/fsl_os_abstraction.h:
-
-C:\Freescale\KSDK_1.2.0/platform/osa/inc/fsl_os_abstraction_bm.h:
-
 C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_lptmr_driver.h:
 
 C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_lptmr_hal.h:
 
-C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_dspi_master_driver.h:
+C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_pit_driver.h:
+
+C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_pit_hal.h:
+
+C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_flexcan_driver.h:
+
+C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_flexcan_hal.h:
+
+C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_uart_driver.h:
+
+C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_uart_hal.h:
+
+C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_dspi_shared_function.h:
 
 C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_dspi_hal.h:
+
+../Sources/Accel/fsl_fxos8700_driver.h:
+
+C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_i2c_master_driver.h:
+
+C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_i2c_hal.h:
+
+C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_dspi_master_driver.h:
