@@ -398,7 +398,7 @@ void doWork(void)
 
 		vscp_omsg.flags = VSCP_VALID_MSG + 3; // three data byte
 		vscp_omsg.priority = VSCP_PRIORITY_LOW;
-		vscp_omsg.vscp_class = VSCP_CLASS1_INFORMATION;
+		vscp_omsg.vscp_class = VSCP_CLASS1_MEASUREMENT;
 		vscp_omsg.vscp_type = VSCP_TYPE_MEASUREMENT64_ANGLE;
 		vscp_omsg.data[ 0 ] = 0;
 		vscp_omsg.data[ 1 ] = accelData.xAngle;
@@ -624,14 +624,12 @@ void init_app_ram( void )
 {
 	uint8_t i;
 
-#ifdef THIS_IS_AN_EXAMPLE
     measurement_clock = 0;      // start a new meaurement cycle
-
     seconds = 0;
     minutes = 0;
     hours = 0;
 
-    relay_pulse_flags = 0;      // No pulse outputs yet
+   /* relay_pulse_flags = 0;      // No pulse outputs yet
 
     // Clear timers
     for ( i = 0; i < 8; i++ ) {
@@ -657,9 +655,7 @@ void init_app_ram( void )
                 eeprom_read(VSCP_EEPROM_END + REG_RELAY5_PROTECTION_TIME_MSB + i ) * 256 +
                 eeprom_read(VSCP_EEPROM_END + REG_RELAY5_PROTECTION_TIME_LSB + i );
         }
-
-    }
-#endif
+    }*/
 
 }
 
