@@ -13,8 +13,13 @@
 
 #define CAN_SUCCESS 0
 
+extern fxos_handler_t i2cDevice;
 extern volatile unsigned long measurement_clock; // Clock for measurements
 uint8_t buffer[BUFFER_SIZE_BYTE]; /*! Buffer for program */
+
+/* needed to prevent error: assigning int to accel_data_t */
+accel_data_t getAngle(fxos_handler_t i2cModule);
+
 
 /* These functions are deliberately not prototyped by vscp_firmware.h,
  * however due to the flexibility of the KSDK the same interface as-is used
@@ -382,10 +387,27 @@ void vscp_setPageSelect(uint8_t idx, uint8_t data)
  */
 void doWork(void)
 {
-    if ( VSCP_STATE_ACTIVE == vscp_node_state ) {
-		;
-		/* read DHT temp/humidity sensor or the like */
-    }
+	accel_data_t accelData;
+
+	if ( VSCP_STATE_ACTIVE == vscp_node_state ) {
+
+		//checkAngle();
+		accelData = getAngle(i2cDevice);
+		PRINTF("X = %d, Y = %d \r\n", accelData.xAngle, accelData.yAngle);
+
+
+		vscp_omsg.flags = VSCP_VALID_MSG + 3; // three data byte
+		vscp_omsg.priority = VSCP_PRIORITY_LOW;
+		vscp_omsg.vscp_class = VSCP_CLASS1_INFORMATION;
+		vscp_omsg.vscp_type = VSCP_TYPE_MEASUREMENT64_ANGLE;
+		vscp_omsg.data[ 0 ] = 0;
+		vscp_omsg.data[ 1 ] = accelData.xAngle;
+		vscp_omsg.data[ 2 ] = accelData.yAngle;
+
+		// send the event
+		vscp_sendEvent();
+
+	}
 }
 
 /*!
@@ -476,6 +498,11 @@ void vscp_getMatrixInfo(char *pData)
     If available this routine sends an embedded MDF file
     in several events. See specification CLASS1.PROTOCOL
     Type=35/36
+
+    Note that if sending the events back to back some devices
+    will not be able to cope with the data stream.
+    It is therefor advisable to have a short delay between
+    each mdf data frame sent out.
  */
 void vscp_getEmbeddedMdfInfo(void)
 {

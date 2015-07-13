@@ -19,6 +19,7 @@ OBJS :=
 C_DEPS := 
 ASM_DEPS := 
 CC_DEPS := 
+SECONDARY_FLASH := 
 CPP_DEPS := 
 CXX_DEPS := 
 C_UPPER_DEPS := 

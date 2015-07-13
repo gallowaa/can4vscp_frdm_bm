@@ -4,7 +4,6 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../Sources/accel.c \
 ../Sources/external_vscp_func.c \
 ../Sources/flash_al.c \
 ../Sources/flexcan.c \
@@ -14,7 +13,6 @@ C_SRCS += \
 ../Sources/vscp_firmware.c 
 
 OBJS += \
-./Sources/accel.o \
 ./Sources/external_vscp_func.o \
 ./Sources/flash_al.o \
 ./Sources/flexcan.o \
@@ -24,7 +22,6 @@ OBJS += \
 ./Sources/vscp_firmware.o 
 
 C_DEPS += \
-./Sources/accel.d \
 ./Sources/external_vscp_func.d \
 ./Sources/flash_al.d \
 ./Sources/flexcan.d \

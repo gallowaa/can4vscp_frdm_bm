@@ -379,7 +379,7 @@ void vscp_sendHeartBeat(uint8_t zone, uint8_t subzone)
     vscp_omsg.flags = VSCP_VALID_MSG + 3; // three data byte
     vscp_omsg.priority = VSCP_PRIORITY_LOW;
     vscp_omsg.vscp_class = VSCP_CLASS1_INFORMATION;
-    vscp_omsg.vscp_type = VSCP_TYPE_INFORMATION_NODE_HEARTBEAT;
+    vscp_omsg.vscp_type = VSCP_TYPE_MEASUREMENT64_ANGLE;
     vscp_omsg.data[ 0 ] = 0;
     vscp_omsg.data[ 1 ] = zone;
     vscp_omsg.data[ 2 ] = subzone;

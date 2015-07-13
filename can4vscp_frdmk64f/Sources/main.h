@@ -171,7 +171,13 @@ void test_vscp_externals();
 void vscp_FLASHFlush();
 
 void init_app_eeprom();
+
 void init_app_ram( void );
+
+typedef struct accelData {
+    uint8_t xAngle;
+    uint8_t yAngle;
+} accel_data_t;
 
 
 #endif /* SOURCES_MAIN_H_ */

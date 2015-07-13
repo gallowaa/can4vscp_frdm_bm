@@ -58,7 +58,7 @@ void init_flash(void);
 //uint8_t spi_eeprom_read(uint8_t addr1, uint8_t addr2);
 //void spi_eeprom_write(uint8_t data, uint8_t addr);
 //void checkAngle(fxos_handler_t i2cModule, fxos_data_t sensorData);
-void checkAngle();
+accel_data_t getAngle(fxos_handler_t i2cModule);
 
 
 void init_flexcan(void);
@@ -78,11 +78,14 @@ int8_t getCANFrame(uint32_t *pid, uint8_t *pdlc, uint8_t *pdata);
 // 							Global Variables
 // ***************************************************************************
 
+
+
 //extern volatile uint16_t vscp_timer; //can change to uint32_t?
 //extern volatile uint16_t vscp_configtimer; // configuration timer
 
 //fxos_data_t sensorData;
 //fxos_handler_t i2cModule;
+fxos_handler_t i2cDevice;
 
 //extern const uint32_t VSCP_FLASH_BASE;
 const uint8_t vscp_deviceURL[] = "www.samplewebsite/frdm.xml";
@@ -194,6 +197,8 @@ void hardware_init() {
 	init_flexcan();
 	//init_lptmr();
 
+
+
 	STATUS_LED_EN; //LED1_EN;
 	CLOCK_PIN_EN;  //GPIO_DRV_OutputPinInit(&gpioPins[0]);  /* scope this pin to test clk */
 	INIT_BTN_EN;   //GPIO_DRV_InputPinInit(&switchPins[0]); /* init sw2 as input */
@@ -260,10 +265,17 @@ int main(void) {
 			.periodUs = 1000u
 	};
 
+	/*
+	uint8_t *xAngle;
+	uint8_t *yAngle;*/
+	accel_data_t accelData;
+	uint8_t y;
 
 	//int16_t xData, yData;
 	//int16_t xAngle, yAngle;
 	//uint32_t ftmModulo;
+
+	vscp_node_state = VSCP_STATE_ACTIVE;
 
 	// Init mcu and peripherals
 	hardware_init();
@@ -271,9 +283,11 @@ int main(void) {
 
 	OSA_Init();
 
+	//fxos_handler_t i2cDevice;
+
 	// Initialize the eCompass.
-	//i2cModule.i2cInstance = BOARD_I2C_COMM_INSTANCE;
-	//FXOS_Init(&i2cModule, NULL);
+	i2cDevice.i2cInstance = BOARD_I2C_COMM_INSTANCE;
+	FXOS_Init(&i2cDevice, NULL);
 
 
 	//can take this out once vscp fully implemented
@@ -310,8 +324,8 @@ int main(void) {
 		if(currentCounter != pitCounter)
 		{
 			currentCounter = pitCounter;
-			checkAngle();
-			//checkAngle(i2cModule,sensorData);
+
+			doWork();
 		}
 
 
