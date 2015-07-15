@@ -34,7 +34,7 @@ Sources/Test \
 Sources/Spi \
 Sources/Interrupt \
 Sources/Flexcan \
-Sources/Flash_Driver \
+Sources/Flash \
 Sources/Board \
 Sources/Adc16 \
 Sources/Accel \

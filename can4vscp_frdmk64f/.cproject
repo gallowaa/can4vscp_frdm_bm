@@ -59,7 +59,7 @@
 									<listOptionValue builtIn="false" value="&quot;C:\Users\Angus\Documents\GitHub\vscp_firmware\common&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;../Sources/Board&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;../Sources/Flexcan&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;../Sources/Flash_Driver&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;../Sources/Flash&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;../Sources/Utilities&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;../Sources/Accel&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;../Project_Settings/Startup_Code&quot;"/>

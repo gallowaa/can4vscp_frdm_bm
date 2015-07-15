@@ -52,7 +52,7 @@ void init_flash(void);			  /*! defined in flash_al.c */
 void init_flexcan(void);		  /*! defined in flexcan.c  */
 void init_adc(uint32_t instance); /*! defined in adc16.c    */
 void calibrateParams(void);		  /*! defined in adc16.c    */
-
+void init_pit();
 
 /* Test */
 void test_adc(void);
@@ -82,6 +82,19 @@ volatile bool pitIsrFlag[2] = {false};
 lptmr_state_t lptmrState; 	 /*! Use LPTMR in Time Counter mode */
 fxos_handler_t i2cDevice;
 extern SIM_Type * gSimBase[];
+
+// Structure of initialize PIT channel No.0
+pit_user_config_t channelConfig0 = {
+		.isInterruptEnabled = true,
+		.periodUs = 1000u			    /*! 1ms - vscp clk*/
+};
+
+pit_user_config_t channelConfig1 = {
+		.isInterruptEnabled = false,	/*! channel is set as hw trigger for adc via
+			 	 	 	 	 	 	 	 	    System Integration Module (SIM) 		*/
+		.periodUs = 500000U,			/*! 500ms - adc measurement period 			*/
+};
+
 
 /*!
  * @brief takes place of init() function in vscp paris implementation
@@ -126,22 +139,23 @@ void hardware_init() {
 	calibrateParams(); /* <- taken from adc_low_power_frdmk64f demo */
 
 	init_adc(ADC_0);
+
+	//init_pit(channelConfig0, channelConfig1);
+	init_pit();
 }
 
 /*!
  * @brief PIT initialization done here. PIT is used as vscp 1ms clock.
  *
  */
-static void init_pit(pit_user_config_t pit_chan_0_config,
-					 pit_user_config_t pit_chan_1_config)
-{
 
+void init_pit()
+{
 	// Init pit module and enable run in debug
 	PIT_DRV_Init(BOARD_PIT_INSTANCE, true);
 
-	// Initialize PIT timer instance for channel 0 and 1
-	PIT_DRV_InitChannel(BOARD_PIT_INSTANCE, 0, &pit_chan_0_config);
-	PIT_DRV_InitChannel(BOARD_PIT_INSTANCE, 1, &pit_chan_1_config);
+	PIT_DRV_InitChannel(BOARD_PIT_INSTANCE, 0, &channelConfig0);
+	PIT_DRV_InitChannel(BOARD_PIT_INSTANCE, 1, &channelConfig1);
 
 	// Start channel 0
 	PRINTF("Starting channel No.0: VSCP 1ms clock\r\n");
@@ -173,25 +187,10 @@ int main(void) {
 	unsigned char c;
 	unsigned char *dst;
 
-	// Structure of initialize PIT channel No.0
-	pit_user_config_t channelConfig0 = {
-			.isInterruptEnabled = true,
-			.periodUs = 1000u			    /*! 1ms - vscp clk*/
-	};
-
-	pit_user_config_t channelConfig1 = {
-			.isInterruptEnabled = false,	/*! channel is set as hw trigger for adc via
-			 	 	 	 	 	 	 	 	    System Integration Module (SIM) 		*/
-			.periodUs = 500000U,			/*! 500ms - adc measurement period 			*/
-	};
-
-
 	// vscp_node_state = VSCP_STATE_ACTIVE; //This is only here to trick the "doWork" function
 
 	// Init mcu and peripherals
 	hardware_init();
-
-	init_pit(channelConfig0, channelConfig1);
 
 	//can take this out once vscp fully implemented
 	vscp_initledfunc = VSCP_LED_BLINK1; //0x02

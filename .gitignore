@@ -64,4 +64,6 @@ Thumbs.db
 #Don't track these
 RemoteSystemsTempFiles
 can4vscp_frdmk64f/Debug/Sources/*
+adc_low_power_frdmk64f/
+adc_low_power_frdmk64f_modified/
 .metadata

@@ -14,7 +14,7 @@ RM := rm -rf
 -include Sources/Spi/subdir.mk
 -include Sources/Interrupt/subdir.mk
 -include Sources/Flexcan/subdir.mk
--include Sources/Flash_Driver/subdir.mk
+-include Sources/Flash/subdir.mk
 -include Sources/Board/subdir.mk
 -include Sources/Adc16/subdir.mk
 -include Sources/Accel/subdir.mk
