@@ -54,6 +54,7 @@ Thumbs.db
 
 # Executables
 *.elf
+*.hex
 *.exe
 *.out
 *.app

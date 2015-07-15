@@ -8,10 +8,15 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
+-include Sources/VSCP/subdir.mk
 -include Sources/Utilities/subdir.mk
 -include Sources/Test/subdir.mk
+-include Sources/Spi/subdir.mk
+-include Sources/Interrupt/subdir.mk
+-include Sources/Flexcan/subdir.mk
 -include Sources/Flash_Driver/subdir.mk
 -include Sources/Board/subdir.mk
+-include Sources/Adc16/subdir.mk
 -include Sources/Accel/subdir.mk
 -include Sources/subdir.mk
 -include Project_Settings/Startup_Code/subdir.mk

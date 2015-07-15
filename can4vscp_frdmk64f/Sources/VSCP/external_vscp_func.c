@@ -14,8 +14,15 @@
 #define CAN_SUCCESS 0
 
 extern fxos_handler_t i2cDevice;
+uint8_t buffer[BUFFER_SIZE_BYTE]; /*! Not used */
+
+/* VSCP globals */
 extern volatile unsigned long measurement_clock; // Clock for measurements
-uint8_t buffer[BUFFER_SIZE_BYTE]; /*! Buffer for program */
+extern uint8_t sendTimer;  // Timer for CAN send
+extern uint8_t seconds;    // counter for seconds
+extern uint8_t minutes;    // counter for minutes
+extern uint8_t hours;      // Counter for hours
+
 
 /* needed to prevent error: assigning int to accel_data_t */
 accel_data_t getAngle(fxos_handler_t i2cModule);
@@ -394,7 +401,6 @@ void doWork(void)
 		//checkAngle();
 		accelData = getAngle(i2cDevice);
 		PRINTF("X = %d, Y = %d \r\n", accelData.xAngle, accelData.yAngle);
-
 
 		vscp_omsg.flags = VSCP_VALID_MSG + 3; // three data byte
 		vscp_omsg.priority = VSCP_PRIORITY_LOW;

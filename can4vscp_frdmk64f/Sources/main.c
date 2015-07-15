@@ -38,19 +38,26 @@
 #define regular_print //to use printf
 #define LPTMR_INSTANCE      0U
 #define BOARD_PIT_INSTANCE  0U
-#define DO_VSCP
+#define ADC_0				0U
+//#define DO_VSCP
 
 // ***************************************************************************
 // 								Prototypes
 // ***************************************************************************
 
-void hardware_init();
+void hardware_init();			  /*! defined in main.c     */
 
-/*! This is only here because init_flash is called from main directly.*/
-/*! The other flash_al.c functions are called from the external vscp functions in external_vscp_func.c */
-void init_flash(void);
-void init_flexcan(void);
-void init_spi();
+void init_spi();				  /*! defined in spi.c      */
+void init_flash(void);			  /*! defined in flash_al.c */
+void init_flexcan(void);		  /*! defined in flexcan.c  */
+void init_adc(uint32_t instance); /*! defined in adc16.c    */
+void calibrateParams(void);		  /*! defined in adc16.c    */
+
+
+/* Test */
+void test_adc(void);
+void printAngle(fxos_handler_t i2cModule);
+
 
 // ***************************************************************************
 // 							Global Variables
@@ -59,7 +66,7 @@ void init_spi();
 //extern volatile uint16_t vscp_timer; //can change to uint32_t?
 //extern volatile uint16_t vscp_configtimer; // configuration timer
 
-const uint8_t vscp_deviceURL[] = "www.samplewebsite/frdm.xml";
+const uint8_t vscp_deviceURL[] = "www.website/frdm.xml";
 
 volatile unsigned long measurement_clock; // Clock for measurements
 
@@ -73,8 +80,8 @@ volatile uint32_t pitCounter=0;
 volatile bool pitIsrFlag[2] = {false};
 
 lptmr_state_t lptmrState; 	 /*! Use LPTMR in Time Counter mode */
-
 fxos_handler_t i2cDevice;
+extern SIM_Type * gSimBase[];
 
 /*!
  * @brief takes place of init() function in vscp paris implementation
@@ -86,6 +93,7 @@ void hardware_init() {
 	/* enable clock for PORTs */
 	CLOCK_SYS_EnablePortClock(PORTA_IDX);
 	CLOCK_SYS_EnablePortClock(PORTB_IDX);
+	CLOCK_SYS_EnablePortClock(PORTC_IDX);
 	CLOCK_SYS_EnablePortClock(PORTD_IDX);
 	CLOCK_SYS_EnablePortClock(PORTE_IDX);
 
@@ -93,17 +101,11 @@ void hardware_init() {
 	BOARD_ClockInit();
 	dbg_uart_init();
 
-	/* OSA_Init();
-	 * Call OSA_Init to use built in time utilities.
-	 * This is needed for delay functions, but OSA init sets up
-	 * the lptmr with a different clock source than is desired for our 1ms clock.
-	 * Going to skip this for first pass. Might have to enable a new timer (PIT, PDB?) to maintain
-	 * the 1 ms clock while using the OSA.
-	 */
-
 	configure_spi_pins(0); 	// Configure SPI pins for talking to EEPROM w/ MAC address
 	configure_i2c_pins(0);  // Configure IIC pins for accelerometer
 	configure_can_pins(0);  // Configure CAN pins
+
+	OSA_Init();             //FXOS_Init seems to depend on this, so does OSA_TimeDelay(ms)
 
 	init_spi();				// For EEPROM
 	init_flexcan();			// For vscp events
@@ -112,31 +114,47 @@ void hardware_init() {
 	i2cDevice.i2cInstance = BOARD_I2C_COMM_INSTANCE;
 	FXOS_Init(&i2cDevice, NULL);
 
-	STATUS_LED_EN; //LED1_EN;
-	CLOCK_PIN_EN;  //GPIO_DRV_OutputPinInit(&gpioPins[0]);  /* scope this pin to test clk */
-	INIT_BTN_EN;   //GPIO_DRV_InputPinInit(&switchPins[0]); /* init sw2 as input */
+	STATUS_LED_EN; /* LED1_EN */
+	CLOCK_PIN_EN;  /* scope this pin to test the 1 ms clock pulse width */
+	INIT_BTN_EN;   /* init sw2 as input */
 
-	// Enable a gpio for taking STB low
+	// Enable a gpio for taking the STB pin on the CAN PHY low
 	CAN0_STB_EN;
 	CAN0_STB_LO;
+
+	// Calibrate param Temperature sensor
+	calibrateParams(); /* <- taken from adc_low_power_frdmk64f demo */
+
+	init_adc(ADC_0);
 }
 
 /*!
  * @brief PIT initialization done here. PIT is used as vscp 1ms clock.
  *
  */
-static void init_pit(pit_user_config_t pit_configuration) {
+static void init_pit(pit_user_config_t pit_chan_0_config,
+					 pit_user_config_t pit_chan_1_config)
+{
 
 	// Init pit module and enable run in debug
-	PIT_DRV_Init(BOARD_PIT_INSTANCE, false);
+	PIT_DRV_Init(BOARD_PIT_INSTANCE, true);
 
 	// Initialize PIT timer instance for channel 0 and 1
-	PIT_DRV_InitChannel(BOARD_PIT_INSTANCE, 0, &pit_configuration);
-	//PIT_DRV_InitChannel(BOARD_PIT_INSTANCE, 1, &chn1Confg);
+	PIT_DRV_InitChannel(BOARD_PIT_INSTANCE, 0, &pit_chan_0_config);
+	PIT_DRV_InitChannel(BOARD_PIT_INSTANCE, 1, &pit_chan_1_config);
 
 	// Start channel 0
-	PRINTF("\n\rStarting channel No.0 ...");
+	PRINTF("Starting channel No.0: VSCP 1ms clock\r\n");
 	PIT_DRV_StartTimer(BOARD_PIT_INSTANCE, 0);
+
+	// Start channel 1
+	PRINTF("Starting channel No.1: ADC16 500ms clock\r\n");
+	PIT_DRV_StartTimer(BOARD_PIT_INSTANCE, 1);
+
+	// Configure SIM for ADC hw trigger source selection
+	SIM_HAL_SetAdcAlternativeTriggerCmd(gSimBase[0], ADC_0, true);
+	SIM_HAL_SetAdcPreTriggerMode(gSimBase[0], ADC_0, kSimAdcPretrgselA);
+	SIM_HAL_SetAdcTriggerMode(gSimBase[0], ADC_0, kSimAdcTrgSelPit1);
 }
 
 
@@ -156,28 +174,24 @@ int main(void) {
 	unsigned char *dst;
 
 	// Structure of initialize PIT channel No.0
-	pit_user_config_t chn0Confg = {
+	pit_user_config_t channelConfig0 = {
 			.isInterruptEnabled = true,
-			.periodUs = 1000u
+			.periodUs = 1000u			    /*! 1ms - vscp clk*/
 	};
 
-	/*
-	uint8_t *xAngle;
-	uint8_t *yAngle;*/
-	accel_data_t accelData;
-	uint8_t y;
+	pit_user_config_t channelConfig1 = {
+			.isInterruptEnabled = false,	/*! channel is set as hw trigger for adc via
+			 	 	 	 	 	 	 	 	    System Integration Module (SIM) 		*/
+			.periodUs = 500000U,			/*! 500ms - adc measurement period 			*/
+	};
 
-	//int16_t xData, yData;
-	//int16_t xAngle, yAngle;
-	//uint32_t ftmModulo;
 
-	vscp_node_state = VSCP_STATE_ACTIVE;
+	// vscp_node_state = VSCP_STATE_ACTIVE; //This is only here to trick the "doWork" function
 
 	// Init mcu and peripherals
 	hardware_init();
-	init_pit(chn0Confg);
 
-	OSA_Init();
+	init_pit(channelConfig0, channelConfig1);
 
 	//can take this out once vscp fully implemented
 	vscp_initledfunc = VSCP_LED_BLINK1; //0x02
@@ -214,7 +228,8 @@ int main(void) {
 		{
 			currentCounter = pitCounter;
 
-			doWork();
+			test_adc();
+			printAngle(i2cDevice);
 		}
 
 

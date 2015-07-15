@@ -36,32 +36,37 @@
 #ifndef SOURCES_MAIN_H_
 #define SOURCES_MAIN_H_
 
-/** vscp_firmware **/
-#include <vscp_firmware.h>
-#include <vscp_class.h>
-#include <vscp_type.h>
-
-/** core **/
-#include <assert.h>
+/** Standard C libs **/
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
+#include <assert.h>
 #include <stdbool.h>
 #include <math.h>
 
+/** vscp_firmware **/
+#include <vscp_firmware.h>				/*! the official vscp firmware library */
+#include <vscp_class.h>					/*! defines vscp classes I & II  */
+#include <vscp_type.h>					/*! defines vscp event types, as described by official spec */
 
-#include "pin_mux.h"
-#include "board.h"
-#include "fsl_os_abstraction.h"
-#include "fsl_device_registers.h"
-#include "fsl_clock_manager.h"
-#include "fsl_debug_console.h"
-#include "fsl_lptmr_driver.h"
-#include "fsl_pit_driver.h"
-#include "fsl_flexcan_driver.h"
-#include "fsl_uart_driver.h"
-#include "fsl_dspi_shared_function.h"
-#include "fsl_device_registers.h"
-#include "fsl_fxos8700_driver.h"
+/* SDK includes */
+#include "pin_mux.h"					/*! configure pins with typical use cases */
+#include "board.h"						/*! miscellaneous board specific funcs & defs */
+#include "fsl_os_abstraction.h"			/*! accel/mag driver for "angle" event */
+#include "fsl_device_registers.h"		/*!  */
+#include "fsl_clock_manager.h"			/*!  */
+#include "fsl_debug_console.h"			/*! makes printf just work */
+#include "fsl_lptmr_driver.h"			/*! LPTMR = Low Power Timer, used as time base for OSA functions, like TimeDelay(ms) */
+#include "fsl_pit_driver.h"				/*! PIT = Periodic Interrupt Timer, used for vscp clk & adc trigger (up to 4 channels) */
+#include "fsl_flexcan_driver.h"			/*! can driver for send/receive vscp events */
+#include "fsl_uart_driver.h"			/*! serial  */
+#include "fsl_dspi_shared_function.h"	/*! data spi for talking to eeprom */
+#include "fsl_device_registers.h"		/*! makes sure the right CPU register defs are included */
+#include "fsl_fxos8700_driver.h"		/*! accel/mag driver for "angle" event */
+#include "fsl_adc16_driver.h"			/*! adc driver for "temperature" event */
+#include "fsl_smc_hal.h"				/*! SMC = System Mode Controller */
+#include "fsl_pmc_hal.h"				/*! Used for getting reference voltage for adc */
+
 
 //#include "flash_al.h"
 //#include "SSD_FTFx.h"

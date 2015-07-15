@@ -216,8 +216,6 @@ void receive_mb_config(void)
 	rxInfo.msg_id_type = kFlexCanMsgIdExt;
 	rxInfo.data_length = 8;
 
-	printf("FlexCAN MB receive config \r\n");
-
 	/* Configure RX MB fields*/
 	result = FLEXCAN_DRV_ConfigRxMb(instance, rxMailboxNum, &rxInfo, rxIdentifier);
 	if (result)

@@ -43,7 +43,7 @@ Sources/external_vscp_func.o: ../Sources/external_vscp_func.c \
  ../Sources/Accel/fsl_fxos8700_driver.h \
  C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_i2c_master_driver.h \
  C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_i2c_hal.h \
- ../Sources/flash_al.h \
+ ../Sources/Flash_Driver/flash_al.h \
  C:\Freescale\KSDK_1.2.0/platform/drivers/src/flash/C90TFS/drvsrc/include/SSD_FTFx.h \
  C:\Freescale\KSDK_1.2.0/platform/drivers/src/flash/C90TFS/drvsrc/include/SSD_FTFx_Internal.h \
  C:\Freescale\KSDK_1.2.0/platform/drivers/src/flash/C90TFS/drvsrc/include/SSD_FTFx_Common.h \
@@ -145,7 +145,7 @@ C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_i2c_master_driver.h:
 
 C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_i2c_hal.h:
 
-../Sources/flash_al.h:
+../Sources/Flash_Driver/flash_al.h:
 
 C:\Freescale\KSDK_1.2.0/platform/drivers/src/flash/C90TFS/drvsrc/include/SSD_FTFx.h:
 

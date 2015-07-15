@@ -73,7 +73,7 @@ void init_spi() {
 	}
 	else
 	{
-		printf("\r\n Transfer at baudrate %lu\n", calculatedBaudRate);
+		printf("Transfer at baudrate %lu\r\n", calculatedBaudRate);
 	}
 #endif
 }

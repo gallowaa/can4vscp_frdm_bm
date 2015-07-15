@@ -42,7 +42,11 @@ Sources/Test/test_vscp_functions.o: ../Sources/Test/test_vscp_functions.c \
  C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_dspi_hal.h \
  ../Sources/Accel/fsl_fxos8700_driver.h \
  C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_i2c_master_driver.h \
- C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_i2c_hal.h
+ C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_i2c_hal.h \
+ C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_adc16_driver.h \
+ C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_adc16_hal.h \
+ C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_smc_hal.h \
+ C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_pmc_hal.h
 
 ../Sources/main.h:
 
@@ -135,3 +139,11 @@ C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_dspi_hal.h:
 C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_i2c_master_driver.h:
 
 C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_i2c_hal.h:
+
+C:\Freescale\KSDK_1.2.0/platform/drivers/inc/fsl_adc16_driver.h:
+
+C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_adc16_hal.h:
+
+C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_smc_hal.h:
+
+C:\Freescale\KSDK_1.2.0/platform/hal/inc/fsl_pmc_hal.h:
