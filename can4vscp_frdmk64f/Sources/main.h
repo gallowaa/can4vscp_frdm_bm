@@ -78,6 +78,18 @@
 /* This section replaces EEPROM Storage from can4vscp_paris/main.h with FLASH
  * There is a vscp wrapper that calls readEEPROM, readFLASH
  */
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//// Note! These #defines specify the actual addresses of the VSCP configuration registers in the attached SPI
+//// eeprom. However, note that in the Register Abstraction Model (aka the interface exposed to the outside world in
+//// vscp_firmware.c) register space is presented as a block of 256 registers. The bottom half (0x00 to 0x7F)
+//// contains application registers, while the top half (0x80 to 0xFF) contains these VSCP configuration registers.
+//// You can have up to 65,535 "pages" of 128 bytes for application specific registers, while the VSCP registers are
+//// not paged. The actual layout in memory does not have to match this layout presented to the outside world.
+//// The vscp_firmware automatically reduces the address passed in from a register read/write to correspond to
+//// what is defined here.
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define VSCP_FLASH_BOOTLOADER_FLAG		0x00 //reserved for bootloader flag
 
@@ -101,7 +113,13 @@
 #define VSCP_FLASH_REG_MANUFACTUR_SUBID0	0x0D
 #define VSCP_FLASH_REG_MANUFACTUR_SUBID1	0x0E
 #define VSCP_FLASH_REG_MANUFACTUR_SUBID2	0x0F
-#define VSCP_FLASH_REG_MANUFACTUR_SUBID3	0x10
+
+/* Delete this so that we can start the guid at 0x10 instead of 0x11. This way it resides in
+ * a single page xxxx 0000 to xxxx 1111 and can be written in one API call without having to
+ * issue two separate WRITE commands to the eeprom
+ */
+
+//#define VSCP_FLASH_REG_MANUFACTUR_SUBID3	0x10
 
 // The following can be stored in program ROM or EEPROM
 // AG: I am keeping this in eeprom since the EUI-48
@@ -110,14 +128,15 @@
 
 /* todo: Need to figure out how I will lay out GUID in memory since EUI-48 area is write protected */
 
-#define VSCP_EEPROM_REG_GUID 			0x11 	// Start of GUID MSB of 16
-												//		 0x11 - 0x20
+#define VSCP_EEPROM_REG_GUID 			0x10 	// Start of GUID MSB of 16
+												//		 0x10 - 0x1F
 
 #define VSCP_FLASH_REG_DEVICE_URL		0x21	// Start of Device URL storage
                                                 // 		0x21 - 0x40
 
 #define VSCP_FLASH_END                 	0x41	// marks end of VSCP EEPROM usage
                                                 //   (next free position)
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  	For main.c application

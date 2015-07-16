@@ -211,7 +211,6 @@ void vscp_setGUID(uint8_t idx, uint8_t data)
 {
 	if (idx > 15) return;
 	spi_eeprom_write(VSCP_EEPROM_REG_GUID + idx, data);		// writeFLASH(VSCP_FLASH_REG_GUID + idx, data);
-
 }
 //#endif
 
@@ -327,7 +326,7 @@ void vscp_writeNicknamePermanent(uint8_t nickname)
  */
 uint8_t vscp_getSegmentCRC(void)
 {
-	return readFLASH(VSCP_FLASH_SEGMENT_CRC );	// return readEEPROM( VSCP_EEPROM_SEGMENT_CRC );
+	return readFLASH( VSCP_FLASH_SEGMENT_CRC );	// return readEEPROM( VSCP_EEPROM_SEGMENT_CRC );
 
 }
 
@@ -423,6 +422,17 @@ uint8_t vscp_readAppReg(uint8_t reg)
 {
 	uint8_t rv;
 	rv = 0x00; //default read
+
+	/* GOING To put app registers in FLASH */
+
+	// Zone
+	if ( reg == 0x00 ) {
+		//rv = eeprom_read(VSCP_EEPROM_END + REG_RELAY_ZONE);
+	}
+	// SubZone
+	else if ( reg == 0x01 ) {
+		//rv = eeprom_read(VSCP_EEPROM_END + REG_RELAY_SUBZONE);
+	}
 
 	/* example assumes 16-bit temp sensor */
 	if( 0 == vscp_page_select){

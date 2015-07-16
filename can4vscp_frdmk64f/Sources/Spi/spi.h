@@ -12,13 +12,15 @@
 #include "main.h"
 #include "fsl_dspi_master_driver.h"
 
-
+/* Microchip EEPROM commands */
 #define WRSR  0x01 // 0x001
 #define WRITE 0x02 // 0x010
 #define READ  0x03 // 0x011
 #define WRDI  0x04 // 0x100
 #define RDSR  0x05 // 0x101
 #define WREN  0x06 // 0x110
+
+#define EUI48_START 0xFA
 
 /*******************************************************************************
  * 							Definitions for SPI

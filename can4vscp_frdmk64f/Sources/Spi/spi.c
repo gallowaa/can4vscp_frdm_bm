@@ -41,14 +41,6 @@ dspi_master_user_config_t masterUserConfig = {
  */
 void init_spi() {
 
-	/*dspi_master_user_config_t masterUserConfig = {
-			.isChipSelectContinuous     = false,
-			.isSckContinuous            = false,
-			.pcsPolarity                = kDspiPcs_ActiveLow,
-			.whichCtar                  = kDspiCtar0,
-			//     .whichPcs                   = kDspiPcs0				// commented out as gpio is used for cs instead. This way did not allow the eeprom to be read
-	};*/
-
 #ifdef USE_INIT
 	// Setup the configuration and get user options.
 	masterDevice.dataBusConfig.bitsPerFrame = 8;
@@ -58,21 +50,17 @@ void init_spi() {
 
 	// Initialize master driver.
 	dspiResult = DSPI_DRV_MasterInit(DSPI_INSTANCE, &masterState, &masterUserConfig);
-	if (dspiResult != kStatus_DSPI_Success)
-	{
+	if (dspiResult != kStatus_DSPI_Success)	{
 		printf("\r\n ERROR: Can not initialize master driver \n");
-
 	}
 
 	// configure baudrate.
 	masterDevice.bitsPerSec = TRANSFER_BAUDRATE;
 	dspiResult = DSPI_DRV_MasterConfigureBus(DSPI_INSTANCE, &masterDevice, &calculatedBaudRate);
-	if (dspiResult != kStatus_DSPI_Success)
-	{
+	if (dspiResult != kStatus_DSPI_Success)	{
 		printf("\r\nERROR: failure in config bus, error %d\n\r", dspiResult);
 	}
-	else
-	{
+	else {
 		printf("Transfer at baudrate %lu\r\n", calculatedBaudRate);
 	}
 #endif
@@ -92,8 +80,6 @@ void spi_eeprom_write(uint8_t addr, uint8_t data){
 
 	uint8_t receiveBuffer[TRANSFER_SIZE] = {0};
 	uint8_t sendBuffer[TRANSFER_SIZE] = {1};
-
-	//SPI0_CS_DESELECT; // Make chip select high (the eeprom needs to see a falling edge)
 
 	/**********************************************
 	 * The WREN instruction must be sent separately
@@ -116,13 +102,11 @@ void spi_eeprom_write(uint8_t addr, uint8_t data){
 	sendBuffer[0] = WRITE; // Overwrite the WREN cmd with the WRITE command
 	sendBuffer[1] = addr;  // address to write
 
-	// Initialize the transmit buffer with some data bytes
+	// Initialize the transmit buffer with some dummy data bytes
 	for (i = 2; i < TRANSFER_SIZE; i++)
 	{
 		sendBuffer[i] = i;
 	}
-
-	//SPI0_CS_SELECT;	// Make cs low
 
 	dspiResult = DSPI_DRV_MasterTransferBlocking(DSPI_INSTANCE,
 												 NULL,
@@ -130,8 +114,6 @@ void spi_eeprom_write(uint8_t addr, uint8_t data){
 												 receiveBuffer,
 												 TRANSFER_SIZE,
 												 MASTER_TRANSFER_TIMEOUT);
-
-	//SPI0_CS_DESELECT; // bring cs back high
 
 	if (dspiResult != kStatus_DSPI_Success)
 	{
@@ -183,16 +165,6 @@ uint8_t spi_eeprom_read(uint8_t addr) {
 	sendBuffer[0] = READ; // The read op-code 0x03
 	sendBuffer[1] = addr;
 
-	// print the transmit buffer.
-	printf("Transmitting: \r\n");
-	for (i = 0; i <  MIN_TFR_SIZE; i++)
-	{
-		printf(" %02X", sendBuffer[i]);
-	}
-	printf("\r\n");
-
-	//SPI0_CS_SELECT;	// Make cs low
-
 	/**********************************************
 	 * Read the data with a blocking transfer API call.
 	 **********************************************/
@@ -204,27 +176,10 @@ uint8_t spi_eeprom_read(uint8_t addr) {
 												 MIN_TFR_SIZE,
 												 MASTER_TRANSFER_TIMEOUT);
 
-	//SPI0_CS_DESELECT; // bring cs back high
-
 	if (dspiResult != kStatus_DSPI_Success)
 	{
 		printf("\r\n ERROR: transfer error, err %d\n\r", dspiResult);
 	}
-
-	//dspiResult =  DSPI_DRV_MasterDeinit(DSPI_INSTANCE);
-
-	// Print out receive buffer.
-	printf("Master receive:\r\n");
-	for (i = 0; i < MIN_TFR_SIZE; i++)
-	{
-		// Print 8 numbers in a line.
-		if (0 == (i & 0x0F))
-		{
-			printf("\r\n");
-		}
-		printf(" %02X", receiveBuffer[i]);
-	}
-	printf("\r\n");
 
 	return receiveBuffer[DATA_BYTE];
 }
@@ -232,55 +187,152 @@ uint8_t spi_eeprom_read(uint8_t addr) {
 
 
 /*!
-    @brief spi_eeprom_read_generic - This function is only for testing!
+    @brief spi_eeprom_guid_init - Initialize the eeprom with the GUID in the appropriate location
+    @purpose The EUI-48 lives in a write protected area by default.
+    		 Copy it to an earlier memory location and create a proper vscp GUID with the format
+    		 for a GUID based on an ethernet MAC.
  */
-uint8_t spi_eeprom_read_generic(uint8_t addr1, uint8_t addr2) {
+void spi_eeprom_guid_init(){
+
+	/* GUID layout in eeprom interfaced over SPI
+	 *
+	 * FF:FF:FF:FF:FF:FF:FF:FE:YY:YY:YY:YY:YY:YY:XX:XX
+	 *
+	 * The holder of the address can freely use the two least significant bytes of the GUID.
+	 * MAC address in MSB - LSB order. Also called MAC-48 or EUI-48 by IEEE
+	 * Source: http://www.vscp.org/docs/vscpspec/doku.php?id=globally_unique_identifiers
+	 */
+
+	uint32_t i,j;
+	dspi_status_t dspiResult;
+
+	uint8_t txBuffer[TRANSFER_SIZE] = {READ, EUI48_START, 2,3,4,5,6,7};	/*! contains op-code + addr for getting EUI-48 */
+
+	uint8_t rxEUI48[TRANSFER_SIZE] = {0};						/*! buffer specifically for receiving EUI-48 from write protected region */
+	uint8_t rxBuffer[TRANSFER_SIZE] = {0};						/*! generic receive buffer for WREN, WRDI writes */
+
+
+	/* Note that we don't write the last 2 bytes (XX:XX) because they are for the nickname
+	 * and are determined later. Array is still 16 bytes as 2 get taken up for opcode + address at beginning */
+	uint8_t txGUID[16] = {0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+						// 	  ,	    , 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xYY, 0xYY, 0xYY, 0xYY, 0xYY, 0xYY, 0xXX, 0xXX
+
+	uint8_t rxGUIDbuff[16] = {0};								/*! This may not be needed, but we provide a 16-byte buffer
+																 *  to satisfy the api call when writing 16-byte GUID */
+
+
+	/**********************************************
+	 * First, get the EUI48 from the write protected region
+	 **********************************************/
+
+	dspiResult = DSPI_DRV_MasterTransferBlocking(DSPI_INSTANCE,
+												NULL,
+												txBuffer,
+												rxEUI48,
+												TRANSFER_SIZE,
+												MASTER_TRANSFER_TIMEOUT);
+
+	j=10; //position 10 is the start index of the EUI-48 in the GUID
+
+	for (i = 2; i < TRANSFER_SIZE; i++)
+	{
+		txGUID[j] = rxEUI48[i];
+		j++;
+	}
+
+	/**********************************************
+	 * The WREN instruction must be sent separately
+	 * to enable writes to the eeprom. This is done
+	 * with its own API call to make the CS line
+	 * come back up which sets the WREN latch.
+	 **********************************************/
+	txBuffer[0] = WREN;
+
+	dspiResult = DSPI_DRV_MasterTransferBlocking(DSPI_INSTANCE,
+												NULL,
+												txBuffer,
+												rxBuffer,
+												1,							/*! 1 byte for WREN */
+												MASTER_TRANSFER_TIMEOUT);
+
+	/**********************************************
+	 * Write the actual data with another API call.
+	 **********************************************/
+
+	txGUID[0] = WRITE; // WRITE command
+	txGUID[1] = VSCP_EEPROM_REG_GUID;  // address to write
+
+	printf("GUID tx: ");
+	for (i = 0; i < 16; i++) {
+		printf(" %02X", txGUID[i]);
+	}
+	printf("\r\n");
+
+	dspiResult = DSPI_DRV_MasterTransferBlocking(DSPI_INSTANCE,
+												 NULL,
+												 txGUID,
+												 rxGUIDbuff,
+												 16,
+												 MASTER_TRANSFER_TIMEOUT);
+
+
+	if (dspiResult != kStatus_DSPI_Success)	{
+		printf("\r\n ERROR: transfer error, err %d\n\r", dspiResult);
+	}
+
+	/**********************************************
+	 * Send the WRDI instruction to prevent from
+	 * accidentally writing to the eeprom
+	 **********************************************/
+
+	txBuffer[0] = WRDI;
+
+	dspiResult = DSPI_DRV_MasterTransferBlocking(DSPI_INSTANCE,
+			NULL,
+			txBuffer,
+			rxBuffer,
+			1,							/*! 1 byte for WREN */
+			MASTER_TRANSFER_TIMEOUT);
+
+}
+
+
+/*!
+    @brief spi_eeprom_print_eui48 - This function is only for testing!
+ */
+void spi_eeprom_print_eui48() {
+
+	uint32_t i;
+	dspi_status_t dspiResult;
+	uint8_t receiveBuffer[TRANSFER_SIZE] = {0};
+	uint8_t sendBuffer[TRANSFER_SIZE] = {0x03,0xFA,2,3,4,5,6,7};
+
+	dspiResult = DSPI_DRV_MasterTransferBlocking(DSPI_INSTANCE,
+			NULL,
+			sendBuffer,
+			receiveBuffer,
+			TRANSFER_SIZE,
+			MASTER_TRANSFER_TIMEOUT);
+
+	// Print out receive buffer.
+	printf("Master receive:\r\n");
+	for (i = 0; i < TRANSFER_SIZE; i++){
+		printf(" %02X", receiveBuffer[i]);
+	}
+	printf("\r\n");
+}
+
+
+/*!
+    @brief spi_eeprom_generic_cmd - This function is only for testing!
+ */
+uint8_t spi_eeprom_generic_cmd(uint8_t addr1, uint8_t addr2) {
 
 	 /*! need these variables when using an init function */
 	uint32_t i;
 	dspi_status_t dspiResult;
 	uint8_t receiveBuffer[TRANSFER_SIZE] = {0};
 	uint8_t sendBuffer[TRANSFER_SIZE] = {1,2,0x0A,4,5,6,7,8};
-
-#ifndef USE_INIT
-	uint32_t calculatedBaudRate;
-	dspi_status_t dspiResult;
-	dspi_master_state_t masterState;
-	dspi_device_t masterDevice;
-
-	dspi_master_user_config_t masterUserConfig = {
-			.isChipSelectContinuous     = false,
-			.isSckContinuous            = false,
-			.pcsPolarity                = kDspiPcs_ActiveLow,
-			.whichCtar                  = kDspiCtar0,
-			//     .whichPcs                   = kDspiPcs0				// commented out as gpio is used for cs instead. This way did not allow the eeprom to be read
-	};
-
-	// Setup the configuration and get user options.
-	masterDevice.dataBusConfig.bitsPerFrame = 8;
-	masterDevice.dataBusConfig.clkPhase     = kDspiClockPhase_FirstEdge;
-	masterDevice.dataBusConfig.clkPolarity  = kDspiClockPolarity_ActiveHigh;
-	masterDevice.dataBusConfig.direction    = kDspiMsbFirst;
-
-	// Initialize master driver.
-	dspiResult = DSPI_DRV_MasterInit(DSPI_INSTANCE, &masterState, &masterUserConfig);
-	if (dspiResult != kStatus_DSPI_Success)
-	{
-		printf("\r\n ERROR: Can not initialize master driver \n");
-	}
-
-	// configure baudrate.
-	masterDevice.bitsPerSec = TRANSFER_BAUDRATE;
-	dspiResult = DSPI_DRV_MasterConfigureBus(DSPI_INSTANCE, &masterDevice, &calculatedBaudRate);
-	if (dspiResult != kStatus_DSPI_Success)
-	{
-		printf("\r\nERROR: failure in config bus, error %d\n\r", dspiResult);
-	}
-	else
-	{
-		printf("\r\n Transfer at baudrate %lu\n", calculatedBaudRate);
-	}
-#endif
 
 	sendBuffer[0] = addr1; //0x03; //read op-code
 
@@ -289,7 +341,7 @@ uint8_t spi_eeprom_read_generic(uint8_t addr1, uint8_t addr2) {
 	else
 		sendBuffer[1] = addr2;//0xfa; //address start
 
-	// Initialize the transmit buffer.
+	// Print the transmit buffer.
 	printf("Transmitting: \r\n");
 	for (i = 0; i < TRANSFER_SIZE; i++)
 	{
@@ -328,5 +380,4 @@ uint8_t spi_eeprom_read_generic(uint8_t addr1, uint8_t addr2) {
 	}
 	printf("\r\n");
 }
-
 

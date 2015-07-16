@@ -7,24 +7,21 @@
 
 #include "spi.h"
 
-void test_spi_generic(){
+void spi_eeprom_guid_init();
 
-	uint8_t c1, c2;
+void test_spi_generic() {
 
-	printf("Press 'w' to write: \r\n");
-	c1 = GETCHAR();
+	int i;
+	uint8_t addr,ret;
 
-	if('w' == c1)
-		spi_eeprom_write(0x0A,c1);
+	spi_eeprom_guid_init();
 
-
-	printf("Enter an op-code, then address:\r\n");
-	c1 = GETCHAR();
-	printf("received %c = hex %x\r\n", c1, c1);
-	c2 = GETCHAR();
-	printf("received %c = hex %x\r\n", c2, c2);
-
-	spi_eeprom_read_generic(c1, c2);
+	for(i=0;i<16;i++) {
+		printf("Enter an address (0x10 to 0x1f) to read a byte from: \r\n");
+		addr = GETCHAR();
+		ret = spi_eeprom_read(addr);
+		printf("Master receive: (0x%02x) = %02X \r\n", addr, ret);
+	}
 
 }
 void test_spi(){

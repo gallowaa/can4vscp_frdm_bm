@@ -57,6 +57,9 @@ void init_pit();
 /* Test */
 void test_adc(void);
 void printAngle(fxos_handler_t i2cModule);
+//void spi_eeprom_get_eui48(void);
+//void spi_eeprom_guid_init();
+void test_spi_generic();
 
 
 // ***************************************************************************
@@ -227,8 +230,9 @@ int main(void) {
 		{
 			currentCounter = pitCounter;
 
-			test_adc();
-			printAngle(i2cDevice);
+			test_spi_generic();
+			//test_adc();
+			//printAngle(i2cDevice);
 		}
 
 
