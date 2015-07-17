@@ -69,14 +69,24 @@ void test_spi_generic();
 //extern volatile uint16_t vscp_timer; //can change to uint32_t?
 //extern volatile uint16_t vscp_configtimer; // configuration timer
 
+/* VSCP core globals */
 const uint8_t vscp_deviceURL[] = "www.website/frdm.xml";
-
 volatile unsigned long measurement_clock; // Clock for measurements
-
 uint8_t sendTimer;  // Timer for CAN send
 uint8_t seconds;    // counter for seconds
 uint8_t minutes;    // counter for minutes
 uint8_t hours;      // Counter for hours
+
+/* VSCP app globals */
+uint8_t current_temp;
+uint8_t current_xAngle;
+uint8_t current_yAngle;
+uint8_t temp0_low_alarm;
+uint8_t temp0_high_alarm;
+uint8_t accel0_high_alarm;
+uint8_t seconds_temp;        // timer for temp event
+uint8_t current_temp;
+
 
 volatile uint32_t d=0;
 volatile uint32_t pitCounter=0;
@@ -129,6 +139,8 @@ void hardware_init() {
 	// Initialize the eCompass.
 	i2cDevice.i2cInstance = BOARD_I2C_COMM_INSTANCE;
 	FXOS_Init(&i2cDevice, NULL);
+
+	init_flash();
 
 	STATUS_LED_EN; /* LED1_EN */
 	CLOCK_PIN_EN;  /* scope this pin to test the 1 ms clock pulse width */
@@ -200,11 +212,8 @@ int main(void) {
 
 	// Check VSCP persistent storage and
 	// restore if needed
+	if( !vscp_check_pstorage() ) {
 
-#ifdef DO_VSCP
-	if( !vscp_check_pstorage() ){
-
-		init_flash();
 		// Spoiled or not initialized - reinitialize
 		init_app_eeprom();
 		init_app_ram();     // Needed because some ram positions
@@ -213,7 +222,6 @@ int main(void) {
 	// Initialize vscp
 	vscp_init(); /* defined in vscp_firmware, line 118 */
 
-#endif
 
 	printf("Hello!\r\n");
 

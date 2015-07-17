@@ -54,6 +54,7 @@
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths.1254661009" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;../Sources&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;../Sources/Adc16&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;../Sources/VSCP&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;../Sources/Interrupt&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;../Sources/SPI&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\Users\Angus\Documents\GitHub\vscp_firmware\common&quot;"/>

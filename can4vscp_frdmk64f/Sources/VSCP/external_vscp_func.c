@@ -10,18 +10,29 @@
 #include "spi.h"
 #include "version.h"
 #include "flexcan.h"
+#include "temperature.h"
 
 #define CAN_SUCCESS 0
 
 extern fxos_handler_t i2cDevice;
 uint8_t buffer[BUFFER_SIZE_BYTE]; /*! Not used */
 
-/* VSCP globals */
+/* VSCP core globals */
 extern volatile unsigned long measurement_clock; // Clock for measurements
 extern uint8_t sendTimer;  // Timer for CAN send
 extern uint8_t seconds;    // counter for seconds
 extern uint8_t minutes;    // counter for minutes
 extern uint8_t hours;      // Counter for hours
+
+/* VSCP app globals */
+extern uint8_t current_temp;
+extern uint8_t current_xAngle;
+extern uint8_t current_yAngle;
+extern uint8_t temp0_low_alarm;
+extern uint8_t temp0_high_alarm;
+extern uint8_t accel0_high_alarm;
+extern uint8_t seconds_temp;        // timer for temp event
+extern uint8_t current_temp;
 
 
 /* needed to prevent error: assigning int to accel_data_t */
@@ -34,6 +45,8 @@ accel_data_t getAngle(fxos_handler_t i2cModule);
 
 int8_t sendCANFrame(uint32_t id, uint8_t dlc, uint8_t *pdata);
 int8_t getCANFrame(uint32_t *pid, uint8_t *pdlc, uint8_t *pdata);
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -293,7 +306,6 @@ uint8_t vscp_getRegisterPagesUsed( void )
 uint8_t vscp_getMDF_URL(uint8_t idx)
 {
 	return vscp_deviceURL[ idx ];
-	//return 0; /* todo: vscp_getMDF_URL, how does this work? the device url can only be 16 bytes? */
 }
 
 /*!
@@ -389,7 +401,7 @@ void vscp_setPageSelect(uint8_t idx, uint8_t data)
 }
 
 /*!
-    The actual work is done here.
+    The actual work is done here. Get angle
  */
 void doWork(void)
 {
@@ -397,9 +409,11 @@ void doWork(void)
 
 	if ( VSCP_STATE_ACTIVE == vscp_node_state ) {
 
-		//checkAngle();
 		accelData = getAngle(i2cDevice);
 		PRINTF("X = %d, Y = %d \r\n", accelData.xAngle, accelData.yAngle);
+
+		current_xAngle = accelData.xAngle;
+		current_yAngle = accelData.yAngle;
 
 		vscp_omsg.flags = VSCP_VALID_MSG + 3; // three data byte
 		vscp_omsg.priority = VSCP_PRIORITY_LOW;
@@ -415,63 +429,255 @@ void doWork(void)
 	}
 }
 
+void doOneSecondWork(void)
+{
+	uint8_t tmp;
+	uint8_t i;
+
+	// Check if events should be sent
+	if ( VSCP_STATE_ACTIVE == vscp_node_state ) {
+
+		// Time for temperature report
+		tmp = spi_eeprom_read(DEFAULT_REPORT_INTERVAL_TEMP0 + i);
+		if (tmp && (seconds_temp > tmp)) {
+
+			// Send event
+			if ( sendTempEvent( 0 ) ) {
+				seconds_temp = 0;
+			}
+
+		}
+
+	}
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// sendTempEvent
+//
+
+int8_t sendTempEvent(uint8_t i)
+{
+    vscp_omsg.priority = VSCP_PRIORITY_MEDIUM;
+    vscp_omsg.flags = VSCP_VALID_MSG + 4;
+    vscp_omsg.vscp_class = VSCP_CLASS1_MEASUREMENT;
+    vscp_omsg.vscp_type = VSCP_TYPE_MEASUREMENT_TEMPERATURE;
+
+    // Data format
+    vscp_omsg.data[ 0 ] = 0x80 | // Normalized integer
+            ((0x03 & spi_eeprom_read(i + REG_TEMP0_CONTROL)) << 3) | // Unit
+            i; // Sensor
+    // Exponent
+    vscp_omsg.data[ 1 ] = 0x82;
+
+    setEventData( current_temp,
+            ( 0x03 & spi_eeprom_read(i + REG_TEMP0_CONTROL)) ); // Format data based on Unit
+
+    // Send event
+    if (!vscp_sendEvent()) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// setEventData
+//
+
+void setEventData(int v, unsigned char unit)
+{
+    uint8_t newval; //double newval;
+    //int ival;
+
+    if (TEMP_UNIT_KELVIN == unit) {
+        // Convert to Kelvin
+        //newval = Celsius2Kelvin(v);
+    } else if (TEMP_UNIT_FAHRENHEIT == unit) {
+        // Convert to Fahrenheit
+        newval = Celsius2Fahrenheit(v);
+    } else {
+        // Defaults to Celsius
+        newval = v;
+    }
+
+    //ival = (int) newval;
+
+    vscp_omsg.data[ 2 ] = newval;
+
+    /*
+    vscp_omsg.data[ 2 ] = ((ival & 0xff00) >> 8);
+    vscp_omsg.data[ 3 ] = (ival & 0xff);
+    */
+
+}
+
+
 /*!
-    tbd
+    @brief vscp_readAppReg
  */
 uint8_t vscp_readAppReg(uint8_t reg)
 {
 	uint8_t rv;
 	rv = 0x00; //default read
 
-	/* GOING To put app registers in FLASH */
-
-	// Zone
-	if ( reg == 0x00 ) {
-		//rv = eeprom_read(VSCP_EEPROM_END + REG_RELAY_ZONE);
-	}
-	// SubZone
-	else if ( reg == 0x01 ) {
-		//rv = eeprom_read(VSCP_EEPROM_END + REG_RELAY_SUBZONE);
-	}
-
-	/* example assumes 16-bit temp sensor */
 	if( 0 == vscp_page_select){
 
-		// MSB temp 1
-		if (10 == reg){
-			//rv = ((readTempSensor(1) >> 8 ) & 0xff );
-		}
-		// LSB temp 1
-		else if (11 == reg){
-			//rv = (readTempSensor(1) & 0xff);
-		}
+		switch (reg) {
 
+		// Zone
+		case 0x00:
+			rv = spi_eeprom_read(VSCP_EEPROM_END + REG_FRDM_ZONE);
+			break;
+
+		// Subzone
+		case 0x01:
+			rv = spi_eeprom_read(VSCP_EEPROM_END + REG_FRDM_SUBZONE);
+			break;
+
+		// Control register for temp sensor 0
+		case 0x02:
+			rv = spi_eeprom_read(VSCP_EEPROM_END + REG_TEMP0_CONTROL);
+			break;
+
+		// Control register for accel sensor 0
+		case 0x03:
+			rv = spi_eeprom_read(VSCP_EEPROM_END + REG_ACCEL0_CONTROL);
+			break;
+
+		// Current temp sensor value
+		case 0x04:
+			rv = current_temp; // Yes it is this simple for now (only using uint8_t). Will need 16 bits later for Kelvin.
+			break;
+
+		// Current accel x angle
+		case 0x05:
+			rv = current_xAngle;
+			break;
+
+		// Current accel y angle
+		case 0x06:
+			rv = current_yAngle;
+			break;
+
+			// Interval register for temp sensor 0
+		case 0x07:
+			rv = spi_eeprom_read(VSCP_EEPROM_END + REG_TEMP0_REPORT_INTERVAL);
+			break;
+
+			// Interval register for accel sensor 0
+		case 0x08:
+			rv = spi_eeprom_read(VSCP_EEPROM_END + REG_ACCEL0_REPORT_INTERVAL);
+			break;
+
+			// High alarm register for temp sensor 0
+		case 0x09:
+			rv = spi_eeprom_read(VSCP_EEPROM_END + REG_TEMP0_HIGH_ALARM);
+			break;
+
+			// Low alarm register for temp sensor 0
+		case 0x10:
+			rv = spi_eeprom_read(VSCP_EEPROM_END + REG_TEMP0_LOW_ALARM);
+			break;
+
+			// High alarm register for accel sensor 0
+		case 0x11:
+			rv = spi_eeprom_read(VSCP_EEPROM_END + REG_ACCEL0_HIGH_ALARM);
+			break;
+		}
 	}
 
-
-	return rv; /* todo: vscp_function */
+	return rv;
 }
 
 /*!
-    tbd
+    @brief vscp_writeAppReg
  */
 uint8_t vscp_writeAppReg( uint8_t reg, uint8_t val )
 {
 	uint8_t rv;
-
 	rv = ~val; //error return
 
 	if(0 == vscp_page_select){
-		if (14 == reg) {
-			//writeFLASH( FLASH_INTERVAL_SENSOR1, val );
-			//rv = readFLASH(FLASH_INTERVAL_SENSOR1 );
-		}
+
+		switch (reg) {
+
+				// Zone
+				case 0x00:
+					spi_eeprom_write(VSCP_EEPROM_END + REG_FRDM_ZONE, val);
+					rv = spi_eeprom_read(VSCP_EEPROM_END + REG_FRDM_ZONE);
+					break;
+
+				// Subzone
+				case 0x01:
+					spi_eeprom_write(VSCP_EEPROM_END + REG_FRDM_SUBZONE, val);
+					rv = spi_eeprom_read(VSCP_EEPROM_END + REG_FRDM_SUBZONE);
+					break;
+
+				// Control register for temp sensor 0
+				case 0x02:
+					spi_eeprom_write(VSCP_EEPROM_END + REG_TEMP0_CONTROL, val);
+					rv = spi_eeprom_read(VSCP_EEPROM_END + REG_TEMP0_CONTROL);
+					break;
+
+				// Control register for accel sensor 0
+				case 0x03:
+					spi_eeprom_write(VSCP_EEPROM_END + REG_ACCEL0_CONTROL, val);
+					rv = spi_eeprom_read(VSCP_EEPROM_END + REG_ACCEL0_CONTROL);
+					break;
+
+				// Current temp sensor value - Cannot write this
+				case 0x04:
+					rv = current_temp;
+					break;
+
+				// Current accel x angle - Cannot write this
+				case 0x05:
+					rv = current_xAngle;
+					break;
+
+				// Current accel y angle - Cannot write this
+				case 0x06:
+					rv = current_yAngle;
+					break;
+
+					// Interval register for temp sensor 0
+				case 0x07:
+					spi_eeprom_write(VSCP_EEPROM_END + REG_TEMP0_REPORT_INTERVAL, val);
+					rv = spi_eeprom_read(VSCP_EEPROM_END + REG_TEMP0_REPORT_INTERVAL);
+					break;
+
+					// Interval register for accel sensor 0
+				case 0x08:
+					spi_eeprom_write(VSCP_EEPROM_END + REG_ACCEL0_REPORT_INTERVAL, val);
+					rv = spi_eeprom_read(VSCP_EEPROM_END + REG_ACCEL0_REPORT_INTERVAL);
+					break;
+
+					// High alarm register for temp sensor 0
+				case 0x09:
+					spi_eeprom_write(VSCP_EEPROM_END + REG_TEMP0_HIGH_ALARM, val);
+					rv = spi_eeprom_read(VSCP_EEPROM_END + REG_TEMP0_HIGH_ALARM);
+					break;
+
+					// Low alarm register for temp sensor 0
+				case 0x10:
+					spi_eeprom_write(VSCP_EEPROM_END + REG_TEMP0_LOW_ALARM, val);
+					rv = spi_eeprom_read(VSCP_EEPROM_END + REG_TEMP0_LOW_ALARM);
+					break;
+
+					// High alarm register for accel sensor 0
+				case 0x11:
+					spi_eeprom_write(VSCP_EEPROM_END + REG_ACCEL0_HIGH_ALARM, val);
+					rv = spi_eeprom_read(VSCP_EEPROM_END + REG_ACCEL0_HIGH_ALARM);
+					break;
+				}
 	}
 	else if (1 == vscp_page_select){
-		//stuff
+		// Only used 1 page
 	}
 
-	return 0; /* todo: vscp_function */
+	return rv;
 }
 
 
@@ -636,14 +842,27 @@ void vscp_FLASHFlush()
 }
 
 
+/* todo: finish this off once I decide what should be in ram */
+
 void init_app_ram( void )
 {
 	uint8_t i;
 
-    measurement_clock = 0;      // start a new meaurement cycle
+    measurement_clock = 0;      // start a new measurement cycle
+
     seconds = 0;
     minutes = 0;
     hours = 0;
+
+    current_temp = 0;
+    current_xAngle = 0;
+    current_yAngle = 0;
+
+    temp0_low_alarm = 0;
+    temp0_high_alarm = 0;
+    accel0_high_alarm = 0;
+
+    /// EXAMPLE BELOW FROM PARIS MODULE
 
    /* relay_pulse_flags = 0;      // No pulse outputs yet
 
@@ -676,9 +895,22 @@ void init_app_ram( void )
 }
 
 
-
 void init_app_eeprom(void)
 {
+
+	spi_eeprom_write(VSCP_EEPROM_END + REG_FRDM_ZONE, 0x05);
+	spi_eeprom_write(VSCP_EEPROM_END + REG_FRDM_SUBZONE, 0x01);
+
+	spi_eeprom_write(VSCP_EEPROM_END + REG_TEMP0_CONTROL, DEFAULT_CONTROL_REG);
+	spi_eeprom_write(VSCP_EEPROM_END + REG_ACCEL0_CONTROL, DEFAULT_CONTROL_REG);
+
+	spi_eeprom_write(VSCP_EEPROM_END + REG_TEMP0_REPORT_INTERVAL, DEFAULT_REPORT_INTERVAL_TEMP0);
+	spi_eeprom_write(VSCP_EEPROM_END + REG_ACCEL0_REPORT_INTERVAL, DEFAULT_REPORT_INTERVAL_ACCEL0);
+
+	spi_eeprom_write(VSCP_EEPROM_END + REG_TEMP0_HIGH_ALARM, DEFAULT_TEMP0_HIGH_ALARM);
+	spi_eeprom_write(VSCP_EEPROM_END + REG_TEMP0_LOW_ALARM, DEFAULT_TEMP0_LOW_ALARM);
+	spi_eeprom_write(VSCP_EEPROM_END + REG_ACCEL0_HIGH_ALARM, DEFAULT_ACCEL0_HIGH_ALARM);
+
 
 #ifdef THIS_IS_AN_EXAMPLE
     unsigned char i, j;
