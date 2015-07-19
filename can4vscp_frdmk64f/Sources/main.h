@@ -68,15 +68,11 @@
 #include "fsl_pmc_hal.h"				/*! Used for getting reference voltage for adc */
 
 
-//#include "flash_al.h"
-//#include "SSD_FTFx.h"
-
 /* VSCP application level */
 #define PAGES 1
 
 /* VSCP core features */
-/* This section replaces EEPROM Storage from can4vscp_paris/main.h with FLASH
- * There is a vscp wrapper that calls readEEPROM, readFLASH
+/* There is enough space on the 2kbit eeprom to also use it for the vscp core registers
  */
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,35 +87,35 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define VSCP_FLASH_BOOTLOADER_FLAG		0x00 //reserved for bootloader flag
+#define VSCP_EEPROM_BOOTLOADER_FLAG		0x00 //reserved for bootloader flag
 
-#define VSCP_FLASH_NICKNAME 			0x01	// Persistent nickname id storage
-#define VSCP_FLASH_SEGMENT_CRC			0x02	// Persistent segment crc storage
-#define VSCP_FLASH_CONTROL 				0x03	// Persistent control byte
+#define VSCP_EEPROM_NICKNAME 			0x01	// Persistent nickname id storage - NOTE! For a GUID based on EUI-48, the nickname is also in the 2 LSBs of GUID.
+#define VSCP_EEPROM_SEGMENT_CRC			0x02	// Persistent segment crc storage
+#define VSCP_EEPROM_CONTROL 				0x03	// Persistent control byte
 
-#define VSCP_FLASH_REG_USERID 			0x04
-#define VSCP_FLASH_REG_USERID1 			0x05
-#define VSCP_FLASH_REG_USERID2 			0x06
-#define VSCP_FLASH_REG_USERID3 			0x07
-#define VSCP_FLASH_REG_USERID4 			0x08
+#define VSCP_EEPROM_REG_USERID 			0x04
+#define VSCP_EEPROM_REG_USERID1 			0x05
+#define VSCP_EEPROM_REG_USERID2 			0x06
+#define VSCP_EEPROM_REG_USERID3 			0x07
+#define VSCP_EEPROM_REG_USERID4 			0x08
 
 // The following can be stored in flash or eeprom
 
-#define VSCP_FLASH_REG_MANUFACTUR_ID0 	0x09
-#define VSCP_FLASH_REG_MANUFACTUR_ID1 	0x0A
-#define VSCP_FLASH_REG_MANUFACTUR_ID2 	0x0B
-#define VSCP_FLASH_REG_MANUFACTUR_ID3 	0x0C
+#define VSCP_EEPROM_REG_MANUFACTUR_ID0 	0x09
+#define VSCP_EEPROM_REG_MANUFACTUR_ID1 	0x0A
+#define VSCP_EEPROM_REG_MANUFACTUR_ID2 	0x0B
+#define VSCP_EEPROM_REG_MANUFACTUR_ID3 	0x0C
 
-#define VSCP_FLASH_REG_MANUFACTUR_SUBID0	0x0D
-#define VSCP_FLASH_REG_MANUFACTUR_SUBID1	0x0E
-#define VSCP_FLASH_REG_MANUFACTUR_SUBID2	0x0F
+#define VSCP_EEPROM_REG_MANUFACTUR_SUBID0	0x0D
+#define VSCP_EEPROM_REG_MANUFACTUR_SUBID1	0x0E
+#define VSCP_EEPROM_REG_MANUFACTUR_SUBID2	0x0F
 
 /* Delete this so that we can start the guid at 0x10 instead of 0x11. This way it resides in
  * a single page xxxx 0000 to xxxx 1111 and can be written in one API call without having to
  * issue two separate WRITE commands to the eeprom
  */
 
-//#define VSCP_FLASH_REG_MANUFACTUR_SUBID3	0x10
+//#define VSCP_EEPROM_REG_MANUFACTUR_SUBID3	0x10
 
 // The following can be stored in program ROM or EEPROM
 // AG: I am keeping this in eeprom since the EUI-48
@@ -161,6 +157,9 @@
 #define DEFAULT_ACCEL0_HIGH_ALARM		15		//15 degrees
 #define DEFAULT_TEMP0_HIGH_ALARM		32		//32 Degrees C
 #define DEFAULT_TEMP0_LOW_ALARM			28		//28 Degrees C
+#define MODULE_LOW_ALARM 				1
+#define MODULE_HIGH_ALARM 				2
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  	For main.c application
@@ -207,6 +206,10 @@ extern uint32_t RelocateFunction(uint32_t dest, uint32_t size, uint32_t src);
 
 extern uint8_t sendTimer;  // Timer for CAN send
 
+void doApplicationOneSecondWork(void);
+
+void doWork(void);
+
 
 /* test_vscp_functions_al.c  */
 
@@ -222,10 +225,19 @@ void init_app_eeprom();
 
 void init_app_ram( void );
 
+void doDM( void );
+
+int8_t sendAccelEvent( void );
+
+
+
+
 typedef struct accelData {
     uint8_t xAngle;
     uint8_t yAngle;
 } accel_data_t;
+
+
 
 
 #endif /* SOURCES_MAIN_H_ */

@@ -35,32 +35,11 @@
 // 								Definitions
 // ***************************************************************************
 #define FlashEverytime
-#define regular_print //to use printf
+#define regular_print 		// to use slow printf
 #define LPTMR_INSTANCE      0U
 #define BOARD_PIT_INSTANCE  0U
-#define ADC_0				0U
-//#define DO_VSCP
-
-// ***************************************************************************
-// 								Prototypes
-// ***************************************************************************
-
-void hardware_init();			  /*! defined in main.c     */
-
-void init_spi();				  /*! defined in spi.c      */
-void init_flash(void);			  /*! defined in flash_al.c */
-void init_flexcan(void);		  /*! defined in flexcan.c  */
-void init_adc(uint32_t instance); /*! defined in adc16.c    */
-void calibrateParams(void);		  /*! defined in adc16.c    */
-void init_pit();
-
-/* Test */
-void test_adc(void);
-void printAngle(fxos_handler_t i2cModule);
-//void spi_eeprom_get_eui48(void);
-//void spi_eeprom_guid_init();
-void test_spi_generic();
-
+#define ADC_0				(0U)
+#define DO_VSCP
 
 // ***************************************************************************
 // 							Global Variables
@@ -70,7 +49,7 @@ void test_spi_generic();
 //extern volatile uint16_t vscp_configtimer; // configuration timer
 
 /* VSCP core globals */
-const uint8_t vscp_deviceURL[] = "www.website/frdm.xml";
+const uint8_t vscp_deviceURL[] = "website/frdm.xml";
 volatile unsigned long measurement_clock; // Clock for measurements
 uint8_t sendTimer;  // Timer for CAN send
 uint8_t seconds;    // counter for seconds
@@ -79,13 +58,14 @@ uint8_t hours;      // Counter for hours
 
 /* VSCP app globals */
 uint8_t current_temp;
-uint8_t current_xAngle;
-uint8_t current_yAngle;
+accel_data_t accelData;
+//uint8_t current_xAngle;
+//uint8_t current_yAngle;
 uint8_t temp0_low_alarm;
 uint8_t temp0_high_alarm;
 uint8_t accel0_high_alarm;
 uint8_t seconds_temp;        // timer for temp event
-uint8_t current_temp;
+uint8_t seconds_accel;        // timer for accel event
 
 
 volatile uint32_t d=0;
@@ -107,6 +87,21 @@ pit_user_config_t channelConfig1 = {
 			 	 	 	 	 	 	 	 	    System Integration Module (SIM) 		*/
 		.periodUs = 500000U,			/*! 500ms - adc measurement period 			*/
 };
+
+
+void hardware_init();			  /*! defined in main.c     */
+
+void init_spi();				  /*! defined in spi.c      */
+void init_flash(void);			  /*! defined in flash_al.c */
+void init_flexcan(void);		  /*! defined in flexcan.c  */
+void init_adc(uint32_t instance); /*! defined in adc16.c    */
+void calibrateParams(void);		  /*! defined in adc16.c    */
+void init_pit();
+
+/* Test */
+void test_adc(void);
+void printAngle(fxos_handler_t i2cModule);
+void test_spi_generic();
 
 
 /*!
@@ -219,30 +214,27 @@ int main(void) {
 		init_app_ram();     // Needed because some ram positions
 							// are initialized from EEPROM
 	}
+
 	// Initialize vscp
-	vscp_init(); /* defined in vscp_firmware, line 118 */
-
-
-	printf("Hello!\r\n");
+	vscp_init();
 
 	while(1)
 	{
 #ifdef DO_VSCP
 		vscp_imsg.flags = 0;
-		vscp_getEvent(); //fetch one vscp event -> vscp_imsg struct
+		vscp_getEvent(); 		// fetch one vscp event -> vscp_imsg struct
 #endif
 
-
 		/* do this every 1ms tick */
-		if(currentCounter != pitCounter)
+/*		if(currentCounter != pitCounter)
 		{
 			currentCounter = pitCounter;
 
 			test_spi_generic();
-			//test_adc();
-			//printAngle(i2cDevice);
+			test_adc();
+			printAngle(i2cDevice);
 		}
-
+*/
 
 #ifdef DO_VSCP
 
@@ -280,9 +272,7 @@ int main(void) {
 					vscp_handleProtocolEvent();
 
 				}
-
-				//doDM();
-
+				doDM();
 			}
 			break;
 
@@ -306,18 +296,23 @@ int main(void) {
 			// Do VSCP one second jobs
 			vscp_doOneSecondWork();
 
+
 			// Temperature report timers are only updated if in active
 			// state guid_reset
 			if ( VSCP_STATE_ACTIVE == vscp_node_state ) {
 
 				// Do VSCP one second jobs
-				//doApplicationOneSecondWork();
+
+				/* temperature is done here, it will check seconds_temp variable
+				 * so that it sends the event as per the REPORT_INTERVAL specified */
+				doApplicationOneSecondWork();
+				seconds_temp++; // Temperature report timers are only updated if in active state
 
 			}
-
+			doWork();
 		}
 
-		// Timekeeping
+		// Timekeeping - Can replace this with RTC which defines structs for keeping track of this automatically
 		if ( seconds > 59 ) {
 
 			seconds = 0;
@@ -333,11 +328,9 @@ int main(void) {
 		}
 #endif
 
-
-
 	}
 
-	//vscp_handleProbeState(); //just a test
+	vscp_handleProbeState(); //just a test
 
 	/* Never leave main */
 	return 0;

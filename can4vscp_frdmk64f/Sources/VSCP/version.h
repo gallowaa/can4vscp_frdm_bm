@@ -13,11 +13,12 @@
 
 #define FIRMWARE_MAJOR_VERSION		0
 #define FIRMWARE_MINOR_VERSION		0
-#define FIRMWARE_SUB_MINOR_VERSION	0
+#define FIRMWARE_SUB_MINOR_VERSION	1
 
 /* History
  *
  * Version 0.0.0 2015-06-09 - VSCP stubs
+ * Version 0.0.1 2015-07-18 - Initial release with temperature & accelerometer events
  *
  *
  */
