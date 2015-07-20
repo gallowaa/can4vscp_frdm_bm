@@ -91,7 +91,7 @@
 
 #define VSCP_EEPROM_NICKNAME 			0x01	// Persistent nickname id storage - NOTE! For a GUID based on EUI-48, the nickname is also in the 2 LSBs of GUID.
 #define VSCP_EEPROM_SEGMENT_CRC			0x02	// Persistent segment crc storage
-#define VSCP_EEPROM_CONTROL 				0x03	// Persistent control byte
+#define VSCP_EEPROM_CONTROL 			0x03	// Persistent control byte
 
 #define VSCP_EEPROM_REG_USERID 			0x04
 #define VSCP_EEPROM_REG_USERID1 			0x05

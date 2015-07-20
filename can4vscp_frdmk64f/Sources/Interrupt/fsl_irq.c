@@ -34,11 +34,18 @@
 /*******************************************************************************
  * Variables
  ******************************************************************************/
-extern volatile bool pitIsrFlag[2];
-extern volatile uint32_t pitCounter;
+//extern volatile bool pitIsrFlag[2];
+//extern volatile uint32_t pitCounter;
+extern volatile uint32_t measurement_clock; // Clock for measurements
+extern volatile uint32_t timeout_clock;
 /*******************************************************************************
  * Code
  ******************************************************************************/
+
+// WDOG_EWM_IRQHandler;
+void wdog_isr(void) {
+	while(1){};
+}
 
 /*!
  * @brief System default IRQ handler defined in startup code.
@@ -69,8 +76,8 @@ void PIT0_IRQHandler(void)
 	// critical vscp
 	vscp_timer++;
 	vscp_configtimer++;
-	pitCounter++;
-	// measurement_clock++; /* optional */
+	measurement_clock++;
+	timeout_clock++;
 
 #ifdef TIMER_HAS_LONG_PERIOD
 	if(VSCP_LED_BLINK1 == vscp_initledfunc)
@@ -96,7 +103,7 @@ void PIT1_IRQHandler(void)
 {
     /* Clear interrupt flag.*/
     PIT_HAL_ClearIntFlag(g_pitBase[0], 1U);
-    pitIsrFlag[1] = true;
+   // pitIsrFlag[1] = true;
 }
 #endif
 #endif /* FSL_FEATURE_PIT_HAS_SHARED_IRQ_HANDLER */

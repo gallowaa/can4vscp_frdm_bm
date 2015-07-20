@@ -57,6 +57,7 @@ void init_flash(void){
 	printf("\n\r Flash Information: ");
 	printf("\n\r Total Flash Size:\t%d KB, Hex: (0x%x)", (P_FLASH_SIZE/ONE_KB), P_FLASH_SIZE);
 	printf("\n\r Flash Sector Size:\t%d KB, Hex: (0x%x) ", (FTFx_PSECTOR_SIZE/ONE_KB), FTFx_PSECTOR_SIZE);
+
 	// Check if DFlash exist on this device.
 	if (flashSSDConfig.DFlashSize)
 	{

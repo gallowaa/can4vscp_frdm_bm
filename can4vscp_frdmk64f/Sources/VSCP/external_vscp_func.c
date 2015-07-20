@@ -127,13 +127,12 @@ int8_t sendCANFrame(uint32_t id, uint8_t dlc, uint8_t *pdata)
 	uint8_t rv = FALSE;
 	sendTimer = 0;
 
-	while ( sendTimer < 1 ) {
-		//if ( ECANSendMessage( id, pdata, dlc, ECAN_TX_XTD_FRAME ) ) {
+	// while ( sendTimer < 1 ) {
 		if( CAN_SUCCESS == FLEXCANSendMessage(id, dlc, pdata, FLEXCAN_TX_XTD_FRAME) ) {
 			rv = TRUE;
-			break;
+			//break;
 		}
-	}
+	// }
 
 	vscp_omsg.flags = 0;
 
@@ -144,8 +143,7 @@ int8_t sendCANFrame(uint32_t id, uint8_t dlc, uint8_t *pdata)
 int8_t getCANFrame(uint32_t *pid, uint8_t *pdlc, uint8_t *pdata)
 {
     FLEXCAN_RX_MSG_FLAGS flags;
-    int i;
-
+    uint8_t i;
     uint32_t pdlc_32;
     uint32_t pdata_32[8]; // For bit compatibility w/ FLEXCANReceive func
 
@@ -167,13 +165,13 @@ int8_t getCANFrame(uint32_t *pid, uint8_t *pdlc, uint8_t *pdata)
         // Must be extended frame
         if (!(flags & FLEXCAN_RX_XTD_FRAME)) return FALSE;
 
-#ifdef DEBUG_GET_CAN
+#ifdef DO_PRINT
         printf("ID: 0x%lx, DLC=%lu \r\n",*pid, pdlc_32);
         printf("RX MB data: 0x");
 #endif
 
         for (i = 0; i < pdlc_32; i++) {
-#ifdef DEBUG_GET_CAN
+#ifdef DO_PRINT
         	printf("%02x ", pdata_32[i]);
 #endif
         	pdata[i] = pdata_32[i];
@@ -417,7 +415,7 @@ void doWork(void)
 	uint8_t setpoint;
 	uint8_t control_reg;
 
-	updateAccel();
+	//updateAccel();
 	updateTemp();
 
 
@@ -661,7 +659,9 @@ void doApplicationOneSecondWork(void)
 void updateAccel( void ) {
 
 	accelData = getAngle(i2cDevice);
+#ifdef DO_PRINT
 	PRINTF("X = %d, Y = %d \r\n", accelData.xAngle, accelData.yAngle);
+#endif
 
 	//current_xAngle = accelData.xAngle; // current_xAngle allows us to also read the current accel event
 	//current_yAngle = accelData.yAngle;
@@ -1077,7 +1077,7 @@ void vscp_FLASHFlush()
 
 void init_app_ram( void )
 {
-	uint8_t i;
+	//uint8_t i;
 
     measurement_clock = 0;      // start a new measurement cycle
 

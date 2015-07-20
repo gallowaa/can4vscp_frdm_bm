@@ -72,12 +72,12 @@ extern void init_trigger_source(uint32_t instance);
 // Variables
 ///////////////////////////////////////////////////////////////////////////////
 
-volatile static uint32_t adcValue = 0;      /*! ADC value */
+volatile uint32_t adcValue = 0;      /*! ADC value */
 static uint32_t adcrTemp25 = 0;             /*! Calibrated ADCR_TEMP25 */
 static uint32_t adcr100m = 0;
 volatile bool conversionCompleted = false;  /*! Conversion is completed Flag */
 SIM_Type * gSimBase[] = SIM_BASE_PTRS;
-static smc_power_mode_config_t smcConfig;
+//static smc_power_mode_config_t smcConfig;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Code

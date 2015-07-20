@@ -29,6 +29,7 @@
  */
 #include "flexcan.h"
 #define MASK
+//#define BUSY_WAIT
 
 // ***************************************************************************
 // 						Subroutines for flexcan
@@ -172,7 +173,7 @@ void init_flexcan(void) {
 
 	FLEXCAN_DRV_SetRxMaskType(instance, kFlexCanRxMaskGlobal);
 	//result = FLEXCAN_DRV_SetRxMbGlobalMask(instance, kFlexCanMsgIdStd, 0x123);
-	result = FLEXCAN_DRV_SetRxMbGlobalMask(instance, kFlexCanMsgIdExt, 0x124); //kFlexCanMsgIdExt
+	result = FLEXCAN_DRV_SetRxMbGlobalMask(instance, kFlexCanMsgIdExt, 0x000); //kFlexCanMsgIdExt
 
 	if (result)
 	{
@@ -193,7 +194,7 @@ void init_flexcan(void) {
 
 	// Extern ID
 
-	result = FLEXCAN_DRV_SetRxIndividualMask(instance, kFlexCanMsgIdExt, rxMailboxNum, 0x123);
+	//result = FLEXCAN_DRV_SetRxIndividualMask(instance, kFlexCanMsgIdExt, rxMailboxNum, 0x123);
 	if(result)
 	{
 		numErrors++;
@@ -286,12 +287,6 @@ int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_
 	//txInfo.data_length = 8;
 	txInfo.data_length = dlc;
 
-	/*
-	for (i = 0; i < txInfo.data_length; i++)
-	{
-		data[i] = 10 + i;
-	}*/
-
 	/* todo: txIdentifier and txMailboxNum are extra features, figure out they can cooperate with vscp */
 	result = FLEXCAN_DRV_ConfigTxMb(instance, txMailboxNum, &txInfo, txIdentifier);
 
@@ -306,17 +301,21 @@ int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_
 		if (result)
 		{
 			numErrors++;
-			printf("Transmit send configuration failed. result: 0x%lx \r\n", result);
+//#ifdef DO_PRINT
+			PRINTF("Transmit send configuration failed. result: 0x%lx \r\n", result);
+//#endif
 		}
 
 		else
 		{
+#ifdef DO_PRINT
 			printf("Data transmitted: \r\n");
 			for (i = 0; i < txInfo.data_length; i++ )
 			{
 				printf("%02x ", pdata[i]);
 			}
 			printf("\r\n");
+#endif
 		}
 	}
 	return result;
@@ -335,44 +334,46 @@ int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_
 flexcan_code_t FLEXCANReceiveMessage(uint32_t *pid, uint32_t *pdlc, uint32_t *pdata, FLEXCAN_RX_MSG_FLAGS *msgFlags)
 {
 
-	uint32_t result, temp;
-	flexcan_data_info_t rxInfo;
+	//uint32_t result, temp;
+	//flexcan_data_info_t rxInfo;
 	flexcan_msgbuff_t rxMb;
-	//uint8_t dlc;
-
-	/* ALL this logic happens at the getCANFrame level
-
-	// Extended CAN frame?
-	if( FLEXCAN_RX_XTD_FRAME == msgFlags ){
-		rxInfo.msg_id_type = kFlexCanMsgIdExt ;
-	}
-	// Standard CAN frame?
-	else if (FLEXCAN_RX_STD_FRAME == msgFlags){
-		rxInfo.msg_id_type = kFlexCanMsgIdStd;
-	}
-	// Default to standard
-	else {
-		printf("\r\n Invalid FLEXCAN_RX_MSG_FLAG, defaulting to STD frame.");
-		rxInfo.msg_id_type = kFlexCanMsgIdStd;
-	}
-	 */
+	int delay = 0;
 
 
 	/* Attempt to receive a message into rxMb */
-
 	result = FLEXCAN_DRV_RxMessageBuffer(instance, rxMailboxNum, &rxMb);
 
 	/* The FlexCAN uses only an interrupt driven process, but we busy-wait here by,
 	 * polling the CODE field of the message buffer code and status word */
 
+#ifdef BUSY_WAIT
+
+	while(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success) {}
+
+#else
+
+	/*
 	while(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success) {
+
 		//can implement a delay in here so that we return false after waiting too long
-		//return FLEXCAN_FAIL;
+		delay++;
+		if(delay > 1000) {
+			delay = 0;
+			return FLEXCAN_FAIL;
+		}
+	}*/
+	if(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success) {
+		return FLEXCAN_FAIL;
 	}
+#endif
+
+
 	if (result)
 	{
 		numErrors++;
+#ifdef DO_PRINT
 		printf("\r\nFLEXCAN receive configuration failed. result: 0x%lx", result);
+#endif
 	}
 
 	else
@@ -395,6 +396,6 @@ flexcan_code_t FLEXCANReceiveMessage(uint32_t *pid, uint32_t *pdlc, uint32_t *pd
 #endif
 		pdata[result] = rxMb.data[result];
 		}
-		return FLEXCAN_SUCCESS;
 	}
+	return FLEXCAN_SUCCESS;
 }

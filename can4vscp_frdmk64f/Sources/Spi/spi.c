@@ -61,7 +61,9 @@ void init_spi() {
 		printf("\r\nERROR: failure in config bus, error %d\n\r", dspiResult);
 	}
 	else {
+#ifdef DO_PRINT
 		printf("Transfer at baudrate %lu\r\n", calculatedBaudRate);
+#endif
 	}
 #endif
 }
@@ -133,6 +135,7 @@ void spi_eeprom_write(uint8_t addr, uint8_t data){
 												 1,							/*! 1 byte for WREN */
 												 MASTER_TRANSFER_TIMEOUT);
 
+#ifdef DO_PRINT
 
 	// Print out receive buffer.
 	printf("Master receive:\r\n");
@@ -146,6 +149,7 @@ void spi_eeprom_write(uint8_t addr, uint8_t data){
 		printf(" %02X", receiveBuffer[i]);
 	}
 	printf("\r\n");
+#endif
 }
 
 
@@ -192,7 +196,7 @@ uint8_t spi_eeprom_read(uint8_t addr) {
     		 Copy it to an earlier memory location and create a proper vscp GUID with the format
     		 for a GUID based on an ethernet MAC.
  */
-void spi_eeprom_guid_init(){
+void spi_eeprom_guid_init() {
 
 	/* GUID layout in eeprom interfaced over SPI
 	 *
@@ -262,11 +266,13 @@ void spi_eeprom_guid_init(){
 	txGUID[0] = WRITE; // WRITE command
 	txGUID[1] = VSCP_EEPROM_REG_GUID;  // address to write
 
+#ifdef DO_PRINT
 	printf("GUID tx: ");
 	for (i = 0; i < 16; i++) {
 		printf(" %02X", txGUID[i]);
 	}
 	printf("\r\n");
+#endif
 
 	dspiResult = DSPI_DRV_MasterTransferBlocking(DSPI_INSTANCE,
 												 NULL,
@@ -314,12 +320,14 @@ void spi_eeprom_print_eui48() {
 			TRANSFER_SIZE,
 			MASTER_TRANSFER_TIMEOUT);
 
+#ifdef DO_PRINT
 	// Print out receive buffer.
 	printf("Master receive:\r\n");
 	for (i = 0; i < TRANSFER_SIZE; i++){
 		printf(" %02X", receiveBuffer[i]);
 	}
 	printf("\r\n");
+#endif
 }
 
 
@@ -379,5 +387,7 @@ uint8_t spi_eeprom_generic_cmd(uint8_t addr1, uint8_t addr2) {
 		printf(" %02X", receiveBuffer[i]);
 	}
 	printf("\r\n");
+
+	return 0;
 }
 

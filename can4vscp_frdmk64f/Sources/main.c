@@ -30,16 +30,17 @@
 
 
 #include "main.h"
+#include "fsl_interrupt_manager.h"
 
 // ***************************************************************************
 // 								Definitions
 // ***************************************************************************
-#define FlashEverytime
-#define regular_print 		// to use slow printf
 #define LPTMR_INSTANCE      0U
 #define BOARD_PIT_INSTANCE  0U
 #define ADC_0				(0U)
-#define DO_VSCP
+
+//#define VSCP_REG_IN_FLASH  // Un-comment this to use FLASH instead of EEPROM for the VSCP registers
+//#define DO_PRINT			 // Un-comment this to print out debug info
 
 // ***************************************************************************
 // 							Global Variables
@@ -50,7 +51,7 @@
 
 /* VSCP core globals */
 const uint8_t vscp_deviceURL[] = "website/frdm.xml";
-volatile unsigned long measurement_clock; // Clock for measurements
+volatile uint32_t measurement_clock; // Clock for measurements
 uint8_t sendTimer;  // Timer for CAN send
 uint8_t seconds;    // counter for seconds
 uint8_t minutes;    // counter for minutes
@@ -66,11 +67,10 @@ uint8_t temp0_high_alarm;
 uint8_t accel0_high_alarm;
 uint8_t seconds_temp;        // timer for temp event
 uint8_t seconds_accel;        // timer for accel event
-
-
+volatile uint32_t timeout_clock;         // Clock used for timeouts
 volatile uint32_t d=0;
-volatile uint32_t pitCounter=0;
-volatile bool pitIsrFlag[2] = {false};
+//volatile uint32_t pitCounter=0;
+//volatile bool pitIsrFlag[2] = {false};
 
 lptmr_state_t lptmrState; 	 /*! Use LPTMR in Time Counter mode */
 fxos_handler_t i2cDevice;
@@ -135,7 +135,9 @@ void hardware_init() {
 	i2cDevice.i2cInstance = BOARD_I2C_COMM_INSTANCE;
 	FXOS_Init(&i2cDevice, NULL);
 
+#ifdef VSCP_REG_IN_FLASH
 	init_flash();
+#endif
 
 	STATUS_LED_EN; /* LED1_EN */
 	CLOCK_PIN_EN;  /* scope this pin to test the 1 ms clock pulse width */
@@ -168,11 +170,15 @@ void init_pit()
 	PIT_DRV_InitChannel(BOARD_PIT_INSTANCE, 1, &channelConfig1);
 
 	// Start channel 0
+#ifdef DO_PRINT
 	PRINTF("Starting channel No.0: VSCP 1ms clock\r\n");
+#endif
 	PIT_DRV_StartTimer(BOARD_PIT_INSTANCE, 0);
 
 	// Start channel 1
+#ifdef DO_PRINT
 	PRINTF("Starting channel No.1: ADC16 500ms clock\r\n");
+#endif
 	PIT_DRV_StartTimer(BOARD_PIT_INSTANCE, 1);
 
 	// Configure SIM for ADC hw trigger source selection
@@ -181,23 +187,14 @@ void init_pit()
 	SIM_HAL_SetAdcTriggerMode(gSimBase[0], ADC_0, kSimAdcTrgSelPit1);
 }
 
+void wdog_isr(void);
+
+
 
 // ***************************************************************************
 // Main() - Main Routine
 // ***************************************************************************
 int main(void) {
-
-	uint32_t result;               /*! Return code from each SSD function */
-	uint32_t destAdrss;            /*! Address of the target location     */
-	uint32_t i, failAddr;          /*! comment */
-	uint32_t FlashValue;		   /*! comment */
-	uint32_t currentCounter = 0;   /*! do things according to 1ms lptmr */
-
-	uint8_t c1,c2;
-	unsigned char c;
-	unsigned char *dst;
-
-	// vscp_node_state = VSCP_STATE_ACTIVE; //This is only here to trick the "doWork" function
 
 	// Init mcu and peripherals
 	hardware_init();
@@ -209,6 +206,8 @@ int main(void) {
 	// restore if needed
 	if( !vscp_check_pstorage() ) {
 
+		spi_eeprom_guid_init();
+
 		// Spoiled or not initialized - reinitialize
 		init_app_eeprom();
 		init_app_ram();     // Needed because some ram positions
@@ -218,25 +217,14 @@ int main(void) {
 	// Initialize vscp
 	vscp_init();
 
+	/*
+	INT_SYS_InstallHandler(WDOG_EWM_IRQn, wdog_isr);
+	INT_SYS_EnableIRQ(WDOG_EWM_IRQn);*/
+
 	while(1)
 	{
-#ifdef DO_VSCP
 		vscp_imsg.flags = 0;
 		vscp_getEvent(); 		// fetch one vscp event -> vscp_imsg struct
-#endif
-
-		/* do this every 1ms tick */
-/*		if(currentCounter != pitCounter)
-		{
-			currentCounter = pitCounter;
-
-			test_spi_generic();
-			test_adc();
-			printAngle(i2cDevice);
-		}
-*/
-
-#ifdef DO_VSCP
 
 		switch ( vscp_node_state ) {
 
@@ -272,7 +260,7 @@ int main(void) {
 					vscp_handleProtocolEvent();
 
 				}
-				doDM();
+				// doDM();
 			}
 			break;
 
@@ -291,10 +279,10 @@ int main(void) {
 
 			measurement_clock = 0;
 
-			sendTimer++;
-
 			// Do VSCP one second jobs
 			vscp_doOneSecondWork();
+			seconds++;
+			sendTimer++;
 
 
 			// Temperature report timers are only updated if in active
@@ -307,6 +295,7 @@ int main(void) {
 				 * so that it sends the event as per the REPORT_INTERVAL specified */
 				doApplicationOneSecondWork();
 				seconds_temp++; // Temperature report timers are only updated if in active state
+				seconds_accel++;
 
 			}
 			doWork();
@@ -326,8 +315,6 @@ int main(void) {
 			if ( hours > 23 ) hours = 0;
 
 		}
-#endif
-
 	}
 
 	vscp_handleProbeState(); //just a test
