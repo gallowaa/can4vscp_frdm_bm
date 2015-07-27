@@ -78,6 +78,7 @@ void PIT0_IRQHandler(void)
 	vscp_configtimer++;
 	measurement_clock++;
 	timeout_clock++;
+	sendTimer++;
 
 #ifdef TIMER_HAS_LONG_PERIOD
 	if(VSCP_LED_BLINK1 == vscp_initledfunc)

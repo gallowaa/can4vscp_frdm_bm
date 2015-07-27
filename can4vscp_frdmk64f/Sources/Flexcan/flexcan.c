@@ -40,11 +40,14 @@ uint32_t txIdentifier;
 uint32_t rxIdentifier;
 uint32_t txRemoteIdentifier;
 uint32_t rxRemoteIdentifier;
-uint32_t txMailboxNum;
-uint32_t rxMailboxNum;
+uint32_t rxMailboxNum = 2;
+uint32_t txMailboxNum = 5;
 uint32_t rxRemoteMailboxNum;
 uint32_t rxRemoteMailboxNum;
 flexcan_state_t canState;
+
+flexcan_data_info_t rxInfo;
+flexcan_data_info_t txInfo;
 
 uint32_t instance = BOARD_CAN_INSTANCE;
 uint32_t numErrors;
@@ -52,6 +55,8 @@ uint32_t numErrors;
 uint32_t result;
 flexcan_user_config_t flexcanData;
 uint32_t canPeClk;
+
+void mb_config(void);
 
 /* The following tables are the CAN bit timing parameters that are calculated by using the method
  * outlined in AN1798, section 4.1.
@@ -91,8 +96,8 @@ void init_flexcan(void) {
 	flexcanData.flexcanMode = kFlexCanNormalMode;
 
 	// Select mailbox number
-	rxMailboxNum = 8;
-	txMailboxNum = 9;
+	//rxMailboxNum = 1;
+	//txMailboxNum = 4;
 
 	/*
 	rxRemoteMailboxNum = 10;
@@ -203,15 +208,50 @@ void init_flexcan(void) {
 #endif
 
 	// Config receive mailbox for flexcan
-	receive_mb_config();
+	mb_config();
 
+}
+
+// FlexCAN receive configuration
+void mb_config(void)
+{
+	uint8_t i;
+	uint32_t result;
+
+	//rxInfo.msg_id_type = kFlexCanMsgIdStd;
+	rxInfo.msg_id_type = kFlexCanMsgIdExt;
+	rxInfo.data_length = 8;
+
+	for(i=0;i<1;i++){
+
+		/* Configure RX MB fields */
+
+		/* There is a possibility that this doesn't enable interrupts properly, for some reason
+		 * the IMASK of the last buffer is getting set */
+		result = FLEXCAN_DRV_ConfigRxMb(instance, i, &rxInfo, rxIdentifier);
+		if (result)
+		{
+			numErrors++;
+			printf("FlexCAN RX MB configuration failed. result: 0x%lx \r\n", result);
+		}
+	}
+
+	for(i=8;i<16;i++){
+
+		/* Configure TX MB fields */
+		result = FLEXCAN_DRV_ConfigTxMb(instance, i, &txInfo, txIdentifier);
+		if (result)
+		{
+			printf("Transmit MB config error. Error Code: 0x%lx \r\n", result);
+		}
+	}
 }
 
 // FlexCAN receive configuration
 void receive_mb_config(void)
 {
 	uint32_t result;
-	flexcan_data_info_t rxInfo;
+	//flexcan_data_info_t rxInfo;
 
 	//rxInfo.msg_id_type = kFlexCanMsgIdStd;
 	rxInfo.msg_id_type = kFlexCanMsgIdExt;
@@ -287,7 +327,6 @@ int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_
 	//txInfo.data_length = 8;
 	txInfo.data_length = dlc;
 
-	/* todo: txIdentifier and txMailboxNum are extra features, figure out they can cooperate with vscp */
 	result = FLEXCAN_DRV_ConfigTxMb(instance, txMailboxNum, &txInfo, txIdentifier);
 
 	if (result)
@@ -296,13 +335,15 @@ int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_
 	}
 	else
 	{
-		result = FLEXCAN_DRV_SendBlocking(instance, txMailboxNum, &txInfo, txIdentifier, pdata, 1000); /* 1000ms timeout or can use OSA_WAIT_FOREVER */
-
+		//OSA_TimeDelay(1);
+		//result = FLEXCAN_DRV_SendBlocking(instance, txMailboxNum, &txInfo, txIdentifier, pdata, 1000); /* 1000ms timeout or can use OSA_WAIT_FOREVER */
+		result = FLEXCAN_DRV_Send(instance, txMailboxNum, &txInfo, txIdentifier, pdata);
 		if (result)
 		{
+			FLEXCAN_DRV_AbortSendingData(BOARD_CAN_INSTANCE);
 			numErrors++;
 //#ifdef DO_PRINT
-			PRINTF("Transmit send configuration failed. result: 0x%lx \r\n", result);
+			//PRINTF("Transmit send configuration failed. result: 0x%lx \r\n", result);
 //#endif
 		}
 
@@ -330,15 +371,22 @@ int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_
     @param msgFlags - type of can frame
     @return TRUE on success.
 */
-
+#define BUSY_WAIT
 flexcan_code_t FLEXCANReceiveMessage(uint32_t *pid, uint32_t *pdlc, uint32_t *pdata, FLEXCAN_RX_MSG_FLAGS *msgFlags)
 {
 
 	//uint32_t result, temp;
 	//flexcan_data_info_t rxInfo;
 	flexcan_msgbuff_t rxMb;
-	int delay = 0;
+	//int delay = 0;
 
+	/* Configure RX MB fields*/
+	result = FLEXCAN_DRV_ConfigRxMb(instance, rxMailboxNum, &rxInfo, rxIdentifier);
+	if (result)
+	{
+		numErrors++;
+		printf("FlexCAN RX MB configuration failed. result: 0x%lx \r\n", result);
+	}
 
 	/* Attempt to receive a message into rxMb */
 	result = FLEXCAN_DRV_RxMessageBuffer(instance, rxMailboxNum, &rxMb);

@@ -127,12 +127,12 @@ int8_t sendCANFrame(uint32_t id, uint8_t dlc, uint8_t *pdata)
 	uint8_t rv = FALSE;
 	sendTimer = 0;
 
-	// while ( sendTimer < 1 ) {
+	 while ( sendTimer < 1000 ) {
 		if( CAN_SUCCESS == FLEXCANSendMessage(id, dlc, pdata, FLEXCAN_TX_XTD_FRAME) ) {
 			rv = TRUE;
-			//break;
+			break;
 		}
-	// }
+	 }
 
 	vscp_omsg.flags = 0;
 
@@ -404,7 +404,9 @@ void vscp_setControlByte(uint8_t ctrl)
 
 
 /*!
-    The work is done here, while doApplicationOneSecondWork sends the actual event when appropriate
+    The updating of data and alarm checking is done here, while doApplicationOneSecondWork
+    sends the actual event when appropriate.
+
     Note: In the kelvin module, there is only 1 type of sensor (temperature) that generates events.
     For that module, i ranges from 0-5 to represent the 6 thermistors. This gets put in vscp_omsg.data[ 0 ] = i; //Index
     Since I have alarms for both temp & accel, let 1 = temp device, 2 = accel device.
@@ -415,7 +417,7 @@ void doWork(void)
 	uint8_t setpoint;
 	uint8_t control_reg;
 
-	//updateAccel();
+	updateAccel();
 	updateTemp();
 
 
@@ -667,6 +669,7 @@ void updateAccel( void ) {
 	//current_yAngle = accelData.yAngle;
 }
 
+/* todo: this needs to be updated to display the correct radian value, or use different measurement TYPE */
 int8_t sendAccelEvent( void )
 {
 	vscp_omsg.flags = VSCP_VALID_MSG + 3; // three data byte

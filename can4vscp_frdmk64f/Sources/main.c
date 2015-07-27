@@ -187,9 +187,10 @@ void init_pit()
 	SIM_HAL_SetAdcTriggerMode(gSimBase[0], ADC_0, kSimAdcTrgSelPit1);
 }
 
-void wdog_isr(void);
+//void wdog_isr(void);
+flexcan_status_t FLEXCAN_DRV_AbortSendingData(uint32_t instance);
 
-
+extern uint32_t numErrors;
 
 // ***************************************************************************
 // Main() - Main Routine
@@ -217,12 +218,10 @@ int main(void) {
 	// Initialize vscp
 	vscp_init();
 
-	/*
-	INT_SYS_InstallHandler(WDOG_EWM_IRQn, wdog_isr);
-	INT_SYS_EnableIRQ(WDOG_EWM_IRQn);*/
 
 	while(1)
 	{
+
 		vscp_imsg.flags = 0;
 		vscp_getEvent(); 		// fetch one vscp event -> vscp_imsg struct
 
@@ -277,12 +276,14 @@ int main(void) {
 		// do a measurement if needed
 		if ( measurement_clock > 1000 ) {
 
+			PRINTF("Transmit send errors: %d\r", numErrors);
+
 			measurement_clock = 0;
 
 			// Do VSCP one second jobs
 			vscp_doOneSecondWork();
 			seconds++;
-			sendTimer++;
+			// sendTimer++;
 
 
 			// Temperature report timers are only updated if in active

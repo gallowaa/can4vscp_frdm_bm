@@ -137,11 +137,9 @@
 #define REG_FRDM_ZONE					0x00
 #define REG_FRDM_SUBZONE				0x01
 
-// #define REG_TEMP0_STATE				0x02		// Will put this in RAM
-#define REG_TEMP0_REPORT_INTERVAL		0x03
+#define REG_TEMP0_REPORT_INTERVAL		0x02
 
-// #define REG_ACCEL0_STATE				0x04		// Will put this in RAM
-#define REG_ACCEL0_REPORT_INTERVAL		0x05
+#define REG_ACCEL0_REPORT_INTERVAL		0x03
 
 #define REG_ACCEL0_HIGH_ALARM			0x06
 #define REG_TEMP0_HIGH_ALARM			0x07
@@ -152,8 +150,8 @@
 
 /** VSCP Application reg defines **/
 
-#define DEFAULT_REPORT_INTERVAL_TEMP0 	10 		//10 Seconds
-#define DEFAULT_REPORT_INTERVAL_ACCEL0 	5		//5 Seconds
+#define DEFAULT_REPORT_INTERVAL_TEMP0 	3 		//10 Seconds
+#define DEFAULT_REPORT_INTERVAL_ACCEL0 	2		//5 Seconds
 #define DEFAULT_ACCEL0_HIGH_ALARM		15		//15 degrees
 #define DEFAULT_TEMP0_HIGH_ALARM		32		//32 Degrees C
 #define DEFAULT_TEMP0_LOW_ALARM			28		//28 Degrees C
