@@ -3,8 +3,6 @@
 
 <h2> Project Requirements</h2>
 
-Note that this repository is a work in progress.
-
 <h3> 1. Get the vscp firmware and software: </h3>
 <ul>
     <li><code>git clone https://github.com/grodansparadis/vscp_software</code></li>
