@@ -31,7 +31,7 @@ dspi_master_user_config_t masterUserConfig = {
 				.isSckContinuous            = false,
 				.pcsPolarity                = kDspiPcs_ActiveLow,
 				.whichCtar                  = kDspiCtar0,
-			    .whichPcs                   = kDspiPcs0				// commented out as gpio is used for cs instead. This way did not allow the eeprom to be read
+			    .whichPcs                   = kDspiPcs0
 };
 
 /*!
@@ -79,9 +79,8 @@ void spi_eeprom_write(uint8_t addr, uint8_t data){
 
 	uint32_t i;
 	dspi_status_t dspiResult;
-
 	uint8_t receiveBuffer[TRANSFER_SIZE] = {0};
-	uint8_t sendBuffer[TRANSFER_SIZE] = {1};
+	uint8_t sendBuffer[TRANSFER_SIZE] = {0};
 
 	/**********************************************
 	 * The WREN instruction must be sent separately
@@ -104,12 +103,6 @@ void spi_eeprom_write(uint8_t addr, uint8_t data){
 	sendBuffer[0] = WRITE; // Overwrite the WREN cmd with the WRITE command
 	sendBuffer[1] = addr;  // address to write
 
-	// Initialize the transmit buffer with some dummy data bytes
-	for (i = 2; i < TRANSFER_SIZE; i++)
-	{
-		sendBuffer[i] = i;
-	}
-
 	dspiResult = DSPI_DRV_MasterTransferBlocking(DSPI_INSTANCE,
 												 NULL,
 												 sendBuffer,
@@ -122,18 +115,20 @@ void spi_eeprom_write(uint8_t addr, uint8_t data){
 		printf("\r\n ERROR: transfer error, err %d\n\r", dspiResult);
 	}
 
+#ifdef EEPROM_LOCK
 	/**********************************************
-	 * Send the WRDI instruction to prevent from
-	 * accidentally writing to the eeprom
-	 **********************************************/
+		 * Send the WRDI instruction to prevent from
+		 * accidentally writing to the eeprom
+		 **********************************************/
 
-	sendBuffer[0] = WRDI;
+		sendBuffer[0] = WRDI;
 
-	dspiResult = DSPI_DRV_MasterTransferBlocking(DSPI_INSTANCE,
-												NULL,sendBuffer,
-												 receiveBuffer,
-												 1,							/*! 1 byte for WREN */
-												 MASTER_TRANSFER_TIMEOUT);
+		dspiResult = DSPI_DRV_MasterTransferBlocking(DSPI_INSTANCE,
+													NULL,sendBuffer,
+													 receiveBuffer,
+													 1,							/*! 1 byte for WREN */
+													 MASTER_TRANSFER_TIMEOUT);
+#endif
 
 #ifdef DO_PRINT
 
@@ -266,7 +261,7 @@ void spi_eeprom_guid_init() {
 	txGUID[0] = WRITE; // WRITE command
 	txGUID[1] = VSCP_EEPROM_REG_GUID;  // address to write
 
-#ifdef DO_PRINT
+#ifdef DEBUG
 	printf("GUID tx: ");
 	for (i = 0; i < 16; i++) {
 		printf(" %02X", txGUID[i]);
@@ -391,3 +386,28 @@ uint8_t spi_eeprom_generic_cmd(uint8_t addr1, uint8_t addr2) {
 	return 0;
 }
 
+void spi_eeprom_lock(void) {
+
+	dspi_status_t dspiResult;
+
+	uint8_t receiveBuffer[TRANSFER_SIZE] = {0};
+	uint8_t sendBuffer[TRANSFER_SIZE] = {0};
+
+	/**********************************************
+	 * Send the WRDI instruction to prevent from
+	 * accidentally writing to the eeprom
+	 **********************************************/
+
+	sendBuffer[0] = WRDI;
+
+	dspiResult = DSPI_DRV_MasterTransferBlocking(DSPI_INSTANCE,
+												NULL,sendBuffer,
+												 receiveBuffer,
+												 1,							/*! 1 byte for WREN */
+												 MASTER_TRANSFER_TIMEOUT);
+
+	if (dspiResult != kStatus_DSPI_Success)
+	{
+		PRINTF("\r\n ERROR: transfer error, err %d\n\r", dspiResult);
+	}
+}

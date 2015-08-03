@@ -40,12 +40,15 @@ uint32_t txIdentifier;
 uint32_t rxIdentifier;
 uint32_t txRemoteIdentifier;
 uint32_t rxRemoteIdentifier;
-uint32_t rxMailboxNum = 2;
-uint32_t txMailboxNum = 5;
+uint32_t rxMailboxNum = 0;
+uint32_t txMailboxNum = 1;
 uint32_t rxRemoteMailboxNum;
 uint32_t rxRemoteMailboxNum;
 flexcan_state_t canState;
 
+//flexcan_msgbuff_t rxMb;
+
+/*! These MUST be global or FLEXCAN_DRV_IRQHandler will hard fault */
 flexcan_data_info_t rxInfo;
 flexcan_data_info_t txInfo;
 
@@ -56,7 +59,9 @@ uint32_t result;
 flexcan_user_config_t flexcanData;
 uint32_t canPeClk;
 
-void mb_config(void);
+void configure_CAN_MessageBuffs(void);
+
+flexcan_status_t FLEXCAN_DRV_AbortSendingData(uint32_t instance);
 
 /* The following tables are the CAN bit timing parameters that are calculated by using the method
  * outlined in AN1798, section 4.1.
@@ -65,6 +70,7 @@ void mb_config(void);
  * The table contains propseg, pseg1, pseg2, pre_divider, and rjw. The values are calculated for
  * a protocol engine clock of 60MHz
  */
+#ifdef IS_THIS_NEEDED
 flexcan_time_segment_t bitRateTable60Mhz[] = {
 		{ 6, 7, 7, 19, 3},  /* 125 kHz */
 		{ 6, 7, 7,  9, 3},  /* 250 kHz */
@@ -84,8 +90,13 @@ flexcan_time_segment_t bitRateTable48Mhz[] = {
 		{ 6, 3, 3,  3, 3},  /* 750 kHz */
 		{ 6, 3, 3,  2, 3},  /* 1   MHz */
 };
+#endif
 
-
+/*!
+    @brief Initialize the flexcan module, baudrates, message buffers, etc.
+    @param none
+    @return TRUE on success.
+ */
 void init_flexcan(void) {
 
 	numErrors = 0;
@@ -95,20 +106,7 @@ void init_flexcan(void) {
 	flexcanData.is_rx_fifo_needed = false;
 	flexcanData.flexcanMode = kFlexCanNormalMode;
 
-	// Select mailbox number
-	//rxMailboxNum = 1;
-	//txMailboxNum = 4;
-
-	/*
-	rxRemoteMailboxNum = 10;
-	rxRemoteMailboxNum = 11;
-
-	// Select mailbox ID
-	rxRemoteIdentifier = 0x0F0;
-	txRemoteIdentifier = 0x00F;*/
-
-	// Set rxIdentifier as same as txIdentifier to receive loopback data
-	rxIdentifier = 0x124;
+	rxIdentifier = 0x123; // These get overwritten, but they will initially set ID0, & ID8
 	txIdentifier = 0x122;
 
 	/* The following tables are the CAN bit timing parameters that are calculated by using the method
@@ -119,11 +117,15 @@ void init_flexcan(void) {
 	 * a protocol engine clock of 60MHz
 	 */
 	flexcan_time_segment_t bitRateTable60Mhz[] = {
+
 			{ 6, 7, 7, 19, 3},  /* 125 kHz */
+
+#ifdef VSCP_ONLY_USES_125KPBS
 			{ 6, 7, 7,  9, 3},  /* 250 kHz */
 			{ 6, 7, 7,  4, 3},  /* 500 kHz */
 			{ 6, 5, 5,  3, 3},  /* 750 kHz */
 			{ 6, 5, 5,  2, 3},  /* 1   MHz */
+#endif
 	};
 
 	/*
@@ -131,11 +133,15 @@ void init_flexcan(void) {
 	 * a protocol engine clock of 48MHz
 	 */
 	flexcan_time_segment_t bitRateTable48Mhz[] = {
+
 			{ 6, 7, 7, 15, 3},  /* 125 kHz */
+
+#ifdef VSCP_ONLY_USES_125KPBS
 			{ 6, 7, 7,  7, 3},  /* 250 kHz */
 			{ 6, 7, 7,  3, 3},  /* 500 kHz */
 			{ 6, 3, 3,  3, 3},  /* 750 kHz */
 			{ 6, 3, 3,  2, 3},  /* 1   MHz */
+#endif
 	};
 
 
@@ -165,7 +171,6 @@ void init_flexcan(void) {
 		break;
 	default:
 		printf("\r\nFLEXCAN bitrate table not available for PE clock: %lu", canPeClk);
-		//return kStatus_FLEXCAN_Fail;
 	}
 	if (result)
 	{
@@ -173,12 +178,12 @@ void init_flexcan(void) {
 		printf("\r\nFLEXCAN set bitrate failed. result: 0x%lx", result);
 	}
 
-	//FLEXCAN_DRV_SetRxMaskType(instance, kFlexCanRxMaskIndividual);
+
 #ifdef MASK
 
 	FLEXCAN_DRV_SetRxMaskType(instance, kFlexCanRxMaskGlobal);
 	//result = FLEXCAN_DRV_SetRxMbGlobalMask(instance, kFlexCanMsgIdStd, 0x123);
-	result = FLEXCAN_DRV_SetRxMbGlobalMask(instance, kFlexCanMsgIdExt, 0x000); //kFlexCanMsgIdExt
+	result = FLEXCAN_DRV_SetRxMbGlobalMask(instance, kFlexCanMsgIdStd, 0x000); //kFlexCanMsgIdExt
 
 	if (result)
 	{
@@ -186,8 +191,10 @@ void init_flexcan(void) {
 		printf("\r\nFLEXCAN set rx MB global mask. result: 0x%lx", result);
 	}
 
+#ifdef CAN0_INDIVIDUAL_MASK
 
-	/*
+	FLEXCAN_DRV_SetRxMaskType(instance, kFlexCanRxMaskIndividual);
+
 	// Standard ID
 	result = FLEXCAN_DRV_SetRxIndividualMask(instance, kFlexCanMsgIdStd, rxMailboxNum, 0x7FF);
 	if(result)
@@ -195,25 +202,35 @@ void init_flexcan(void) {
 		numErrors++;
 		printf("\r\nFLEXCAN set rx individual mask with standard ID fail. result: 0x%lx", result);
 	}
-	 */
+
 
 	// Extern ID
 
-	//result = FLEXCAN_DRV_SetRxIndividualMask(instance, kFlexCanMsgIdExt, rxMailboxNum, 0x123);
+	result = FLEXCAN_DRV_SetRxIndividualMask(instance, kFlexCanMsgIdExt, rxMailboxNum, 0x123);
 	if(result)
 	{
 		numErrors++;
 		printf("\r\nFLEXCAN set rx individual mask with standard ID fail. result: 0x%lx", result);
 	}
 #endif
+#endif
 
-	// Config receive mailbox for flexcan
-	mb_config();
+	// Init all mailboxes for flexcan
+	configure_CAN_MessageBuffs();
 
+	/* Need this line so that state->rx_mb_idx agrees with rxMailboxNum */
+	configure_CAN_rxMessageBuff(); // Configure the receive mailbox for flexcan
+
+
+	/* Attempt to receive a message into rxMb */
+	//result = FLEXCAN_DRV_RxMessageBuffer(instance, rxMailboxNum, &rxMb);
 }
 
-// FlexCAN receive configuration
-void mb_config(void)
+/*!
+    @brief Initialize 16 message buffers, bottom half for RX, top half for TX
+    @param none.
+ */
+void configure_CAN_MessageBuffs(void)
 {
 	uint8_t i;
 	uint32_t result;
@@ -222,12 +239,13 @@ void mb_config(void)
 	rxInfo.msg_id_type = kFlexCanMsgIdExt;
 	rxInfo.data_length = 8;
 
-	for(i=0;i<1;i++){
+	txInfo.msg_id_type = kFlexCanMsgIdExt;
+	txInfo.data_length = 8;
+
+	for(i=0;i<8;i++){
 
 		/* Configure RX MB fields */
 
-		/* There is a possibility that this doesn't enable interrupts properly, for some reason
-		 * the IMASK of the last buffer is getting set */
 		result = FLEXCAN_DRV_ConfigRxMb(instance, i, &rxInfo, rxIdentifier);
 		if (result)
 		{
@@ -247,17 +265,18 @@ void mb_config(void)
 	}
 }
 
-// FlexCAN receive configuration
-void receive_mb_config(void)
+/*!
+    @brief Initialize 1 RX message buffer, called by FLEXCANReceiveMessage()
+    @param none.
+ */
+void configure_CAN_rxMessageBuff(void)
 {
 	uint32_t result;
-	//flexcan_data_info_t rxInfo;
 
-	//rxInfo.msg_id_type = kFlexCanMsgIdStd;
 	rxInfo.msg_id_type = kFlexCanMsgIdExt;
 	rxInfo.data_length = 8;
 
-	/* Configure RX MB fields*/
+	/* Configure RX MB fields */
 	result = FLEXCAN_DRV_ConfigRxMb(instance, rxMailboxNum, &rxInfo, rxIdentifier);
 	if (result)
 	{
@@ -266,47 +285,19 @@ void receive_mb_config(void)
 	}
 }
 
-// Send configuration and transfer FlexCAN messages
-void transfer_mb_loopback(void)
-{
-	uint32_t result, temp;
-	flexcan_msgbuff_t rxMb;
-
-	//send_data();
-
-	result = FLEXCAN_DRV_RxMessageBuffer(instance, rxMailboxNum,&rxMb);
-
-	while(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success) {}
-	if (result)
-	{
-		numErrors++;
-		printf("\r\nFLEXCAN receive configuration failed. result: 0x%lx", result);
-	}
-	else
-	{
-		temp = ((rxMb.cs) >> 16) & 0xF;
-		//printf("\r\nDLC=%d, mb_idx=%d", temp, rxMailboxNum);
-		printf("\r\nDLC=%lu, mb_idx=%lu", temp, rxMailboxNum);
-		printf("\r\nRX MB data: 0x");
-
-		for (result = 0; result < temp; result++)
-			printf("%02x ", rxMb.data[result]);
-
-		printf("\r\nID: 0x%lx", rxMb.msgId);
-	}
-
-}
 
 /*!
     @brief Send a VSCP frame
     @param unsigned long id -
     @return TRUE on success.
  */
+
+#define IS_CAN_SEND_BLOCKING
 int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_FLAGS msgFlags)
 {
-	//uint8_t data[8];
+#ifdef DO_PRINT
 	uint32_t result, i;
-	flexcan_data_info_t txInfo;
+#endif
 
 	txIdentifier = id;
 
@@ -335,16 +326,18 @@ int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_
 	}
 	else
 	{
-		//OSA_TimeDelay(1);
-		//result = FLEXCAN_DRV_SendBlocking(instance, txMailboxNum, &txInfo, txIdentifier, pdata, 1000); /* 1000ms timeout or can use OSA_WAIT_FOREVER */
+#ifdef IS_CAN_SEND_BLOCKING
+		result = FLEXCAN_DRV_SendBlocking(instance, txMailboxNum, &txInfo, txIdentifier, pdata, 1000); /* 1000ms timeout or can use OSA_WAIT_FOREVER */
+#else
 		result = FLEXCAN_DRV_Send(instance, txMailboxNum, &txInfo, txIdentifier, pdata);
+#endif
 		if (result)
 		{
 			FLEXCAN_DRV_AbortSendingData(BOARD_CAN_INSTANCE);
 			numErrors++;
-//#ifdef DO_PRINT
-			//PRINTF("Transmit send configuration failed. result: 0x%lx \r\n", result);
-//#endif
+#ifdef DO_PRINT_DEBUG
+			PRINTF("Transmit send configuration failed. result: 0x%lx \r\n", result);
+#endif
 		}
 
 		else
@@ -374,19 +367,8 @@ int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_
 #define BUSY_WAIT
 flexcan_code_t FLEXCANReceiveMessage(uint32_t *pid, uint32_t *pdlc, uint32_t *pdata, FLEXCAN_RX_MSG_FLAGS *msgFlags)
 {
-
-	//uint32_t result, temp;
-	//flexcan_data_info_t rxInfo;
+	uint32_t result;
 	flexcan_msgbuff_t rxMb;
-	//int delay = 0;
-
-	/* Configure RX MB fields*/
-	result = FLEXCAN_DRV_ConfigRxMb(instance, rxMailboxNum, &rxInfo, rxIdentifier);
-	if (result)
-	{
-		numErrors++;
-		printf("FlexCAN RX MB configuration failed. result: 0x%lx \r\n", result);
-	}
 
 	/* Attempt to receive a message into rxMb */
 	result = FLEXCAN_DRV_RxMessageBuffer(instance, rxMailboxNum, &rxMb);
@@ -394,11 +376,24 @@ flexcan_code_t FLEXCANReceiveMessage(uint32_t *pid, uint32_t *pdlc, uint32_t *pd
 	/* The FlexCAN uses only an interrupt driven process, but we busy-wait here by,
 	 * polling the CODE field of the message buffer code and status word */
 
-#ifdef BUSY_WAIT
+#ifdef TEST_CAN
+	if(VSCP_STATE_ACTIVE == vscp_node_state)
+	{
+		while(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success) {}
+	}
+	else
+	{
+		if(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success)
+		{
+				return FLEXCAN_FAIL;
+		}
+	}
+#endif
 
-	while(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success) {}
-
-#else
+	if(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success)
+	{
+		return FLEXCAN_FAIL;
+	}
 
 	/*
 	while(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success) {
@@ -410,11 +405,6 @@ flexcan_code_t FLEXCANReceiveMessage(uint32_t *pid, uint32_t *pdlc, uint32_t *pd
 			return FLEXCAN_FAIL;
 		}
 	}*/
-	if(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success) {
-		return FLEXCAN_FAIL;
-	}
-#endif
-
 
 	if (result)
 	{
@@ -447,3 +437,35 @@ flexcan_code_t FLEXCANReceiveMessage(uint32_t *pid, uint32_t *pdlc, uint32_t *pd
 	}
 	return FLEXCAN_SUCCESS;
 }
+
+
+// Send configuration and transfer FlexCAN messages
+void transfer_mb_loopback(void)
+{
+	uint32_t result, temp;
+	flexcan_msgbuff_t rxMb;
+
+	//send_data();
+
+	result = FLEXCAN_DRV_RxMessageBuffer(instance, rxMailboxNum,&rxMb);
+
+	while(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success) {}
+	if (result)
+	{
+		numErrors++;
+		printf("\r\nFLEXCAN receive configuration failed. result: 0x%lx", result);
+	}
+	else
+	{
+		temp = ((rxMb.cs) >> 16) & 0xF;
+		printf("\r\nDLC=%lu, mb_idx=%lu", temp, rxMailboxNum);
+		printf("\r\nRX MB data: 0x");
+
+		for (result = 0; result < temp; result++)
+			printf("%02x ", rxMb.data[result]);
+
+		printf("\r\nID: 0x%lx", rxMb.msgId);
+	}
+
+}
+

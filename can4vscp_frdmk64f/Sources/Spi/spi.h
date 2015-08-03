@@ -67,4 +67,10 @@ uint8_t spi_eeprom_read(uint8_t addr);
  */
 uint8_t spi_eeprom_read_generic(uint8_t addr1, uint8_t addr2);
 
+
+/*!
+    @brief spi_eeprom_lock - Send the write-disable instruction
+ */
+void spi_eeprom_lock(void);
+
 #endif /* SOURCES_SPI_AL_H_ */

@@ -417,7 +417,7 @@ void doWork(void)
 	uint8_t setpoint;
 	uint8_t control_reg;
 
-	updateAccel();
+	//updateAccel();
 	updateTemp();
 
 
@@ -638,7 +638,11 @@ void doApplicationOneSecondWork(void)
 	if ( VSCP_STATE_ACTIVE == vscp_node_state ) {
 
 		// Time for temperature report ?
+#ifdef USE_EEPROM
 		tmp = spi_eeprom_read(REG_TEMP0_REPORT_INTERVAL + i);
+#else
+		tmp = 2;
+#endif
 		if (tmp && (seconds_temp > tmp)) {
 
 			// Send event from temp sensor 0
@@ -648,7 +652,11 @@ void doApplicationOneSecondWork(void)
 		}
 
 		// Time for accel report ?
+#ifdef USE_EEPROM
 		tmp = spi_eeprom_read(REG_ACCEL0_REPORT_INTERVAL);
+#else
+		tmp = 2;
+#endif
 		if(tmp && (seconds_accel > tmp)) {
 
 			if(sendAccelEvent()) {
@@ -1123,18 +1131,39 @@ void init_app_ram( void )
 
 }
 
-
+#define DEBUG
 void init_app_eeprom(void)
 {
+	uint8_t rcvdByte = 0;
 
-	spi_eeprom_write(VSCP_EEPROM_END + REG_FRDM_ZONE, 0x05);
-	spi_eeprom_write(VSCP_EEPROM_END + REG_FRDM_SUBZONE, 0x01);
+	spi_eeprom_write(VSCP_EEPROM_END + REG_FRDM_ZONE, ZONE);
+	spi_eeprom_write(VSCP_EEPROM_END + REG_FRDM_SUBZONE, SUBZONE);
 
 	spi_eeprom_write(VSCP_EEPROM_END + REG_TEMP0_CONTROL, DEFAULT_CONTROL_REG);
 	spi_eeprom_write(VSCP_EEPROM_END + REG_ACCEL0_CONTROL, DEFAULT_CONTROL_REG);
 
 	spi_eeprom_write(VSCP_EEPROM_END + REG_TEMP0_REPORT_INTERVAL, DEFAULT_REPORT_INTERVAL_TEMP0);
 	spi_eeprom_write(VSCP_EEPROM_END + REG_ACCEL0_REPORT_INTERVAL, DEFAULT_REPORT_INTERVAL_ACCEL0);
+
+#ifdef DEBUG
+
+	rcvdByte = spi_eeprom_read(VSCP_EEPROM_END + REG_FRDM_ZONE);
+	PRINTF("ZONE = %d, it should be (%d) \r\n", rcvdByte, ZONE);
+
+	rcvdByte = spi_eeprom_read(VSCP_EEPROM_END + REG_FRDM_ZONE);
+	PRINTF("SUBZONE = %d, it should be (%d) \r\n", rcvdByte, SUBZONE);
+
+	rcvdByte = spi_eeprom_read(VSCP_EEPROM_END + REG_TEMP0_CONTROL);
+	PRINTF("TEMP0_CONTROL = %d, it should be (%d) \r\n", rcvdByte, DEFAULT_CONTROL_REG);
+
+	rcvdByte = spi_eeprom_read(VSCP_EEPROM_END + REG_TEMP0_REPORT_INTERVAL);
+	PRINTF("TEMP0_REPORT_INTERVAL = %d, it should be (%d) \r\n", rcvdByte, DEFAULT_REPORT_INTERVAL_TEMP0);
+
+	rcvdByte = spi_eeprom_read(VSCP_EEPROM_END + REG_ACCEL0_REPORT_INTERVAL);
+	PRINTF("ACCEL0_REPORT_INTERVAL = %d, it should be (%d) \r\n", rcvdByte, DEFAULT_REPORT_INTERVAL_ACCEL0);
+
+#endif
+
 
 	spi_eeprom_write(VSCP_EEPROM_END + REG_TEMP0_HIGH_ALARM, DEFAULT_TEMP0_HIGH_ALARM);
 	spi_eeprom_write(VSCP_EEPROM_END + REG_TEMP0_LOW_ALARM, DEFAULT_TEMP0_LOW_ALARM);

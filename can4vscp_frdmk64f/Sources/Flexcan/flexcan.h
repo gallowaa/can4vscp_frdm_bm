@@ -63,10 +63,43 @@ typedef enum flexcan_status {
 } flexcan_code_t;
 
 void init_flexcan(void);
-void receive_mb_config(void);
-void transfer_mb_loopback(void);
+
+
+/*!
+    @brief Initialize 1 RX message buffer, called by FLEXCANReceiveMessage()
+    @param none.
+ */
+void configure_CAN_rxMessageBuff(void);
+
+
+/*!
+    @brief Initialize 16 message buffers, bottom half for RX, top half for TX
+    @param none.
+ */
+void configure_CAN_MessageBuffs(void);
+
+
+
+/*!
+    @brief Send a VSCP frame
+    @param unsigned long id -
+    @return TRUE on success.
+ */
 int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_FLAGS msgFlags);
+
+/*!
+    @brief Get a VSCP frame.  Use this function to check for
+    	   full receive buffer and extract received data into local buffers.
+    @param pid - Pointer to buffer that will be populated with receive ID.
+    @param pdlc - Pointer to buffer that will be populated with count of bytes copied in data buffer.
+    @param pdata - Pointer to buffer that will be populated with data if there is any
+    @param msgFlags - type of can frame
+    @return TRUE on success.
+*/
 flexcan_code_t FLEXCANReceiveMessage(uint32_t *pid, uint32_t *pdlc, uint32_t *pdata, FLEXCAN_RX_MSG_FLAGS *msgFlags);
 
+
+void transfer_mb_loopback(void);
+void receive_mb_config(void);
 
 #endif /* SOURCES_FLEXCAN_H_ */

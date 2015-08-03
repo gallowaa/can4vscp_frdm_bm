@@ -30,17 +30,19 @@
 
 
 #include "main.h"
-#include "fsl_interrupt_manager.h"
+//#include "fsl_interrupt_manager.h"
 
 // ***************************************************************************
 // 								Definitions
 // ***************************************************************************
-#define LPTMR_INSTANCE      0U
-#define BOARD_PIT_INSTANCE  0U
-#define ADC_0				(0U)
 
 //#define VSCP_REG_IN_FLASH  // Un-comment this to use FLASH instead of EEPROM for the VSCP registers
 //#define DO_PRINT			 // Un-comment this to print out debug info
+
+
+#define LPTMR_INSTANCE      (0U)
+#define BOARD_PIT_INSTANCE  (0U)
+#define ADC_0				(0U)
 
 // ***************************************************************************
 // 							Global Variables
@@ -65,12 +67,11 @@ accel_data_t accelData;
 uint8_t temp0_low_alarm;
 uint8_t temp0_high_alarm;
 uint8_t accel0_high_alarm;
-uint8_t seconds_temp;        // timer for temp event
-uint8_t seconds_accel;        // timer for accel event
-volatile uint32_t timeout_clock;         // Clock used for timeouts
+uint8_t seconds_temp;        				// timer for temp event
+uint8_t seconds_accel;        				// timer for accel event
+volatile uint32_t timeout_clock;        	// Clock used for timeouts
 volatile uint32_t d=0;
-//volatile uint32_t pitCounter=0;
-//volatile bool pitIsrFlag[2] = {false};
+
 
 lptmr_state_t lptmrState; 	 /*! Use LPTMR in Time Counter mode */
 fxos_handler_t i2cDevice;
@@ -112,11 +113,11 @@ void test_spi_generic();
 void hardware_init() {
 
 	/* enable clock for PORTs */
-	CLOCK_SYS_EnablePortClock(PORTA_IDX);
-	CLOCK_SYS_EnablePortClock(PORTB_IDX);
-	CLOCK_SYS_EnablePortClock(PORTC_IDX);
-	CLOCK_SYS_EnablePortClock(PORTD_IDX);
-	CLOCK_SYS_EnablePortClock(PORTE_IDX);
+	CLOCK_SYS_EnablePortClock(PORTA_IDX); /*! */
+	CLOCK_SYS_EnablePortClock(PORTB_IDX); /*! The CAN pins are on port B */
+	CLOCK_SYS_EnablePortClock(PORTC_IDX); /*! */
+	CLOCK_SYS_EnablePortClock(PORTD_IDX); /*! The SPI pins are on port D */
+	CLOCK_SYS_EnablePortClock(PORTE_IDX); /*! The I2C pins are on port E */
 
 	/* Init board clock */
 	BOARD_ClockInit();
@@ -188,7 +189,7 @@ void init_pit()
 }
 
 //void wdog_isr(void);
-flexcan_status_t FLEXCAN_DRV_AbortSendingData(uint32_t instance);
+
 
 extern uint32_t numErrors;
 
@@ -205,14 +206,18 @@ int main(void) {
 
 	// Check VSCP persistent storage and
 	// restore if needed
+
 	if( !vscp_check_pstorage() ) {
 
+#ifdef USE_EEPROM
 		spi_eeprom_guid_init();
 
 		// Spoiled or not initialized - reinitialize
 		init_app_eeprom();
+#endif
 		init_app_ram();     // Needed because some ram positions
 							// are initialized from EEPROM
+
 	}
 
 	// Initialize vscp
@@ -283,7 +288,7 @@ int main(void) {
 			// Do VSCP one second jobs
 			vscp_doOneSecondWork();
 			seconds++;
-			// sendTimer++;
+			// sendTimer++; // sendTimer should be incremented in the 1ms interrupt
 
 
 			// Temperature report timers are only updated if in active

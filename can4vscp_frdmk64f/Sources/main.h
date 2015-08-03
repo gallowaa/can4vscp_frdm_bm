@@ -36,6 +36,8 @@
 #ifndef SOURCES_MAIN_H_
 #define SOURCES_MAIN_H_
 
+#define DEBUG				 // Reads eeprom after initializing it in init_app_eeprom();
+
 /** Standard C libs **/
 #include <stdio.h>
 #include <stdint.h>
@@ -150,13 +152,17 @@
 
 /** VSCP Application reg defines **/
 
-#define DEFAULT_REPORT_INTERVAL_TEMP0 	3 		//10 Seconds
-#define DEFAULT_REPORT_INTERVAL_ACCEL0 	2		//5 Seconds
+#define DEFAULT_REPORT_INTERVAL_TEMP0 	2 		//10 Seconds
+#define DEFAULT_REPORT_INTERVAL_ACCEL0 	1		//5 Seconds
 #define DEFAULT_ACCEL0_HIGH_ALARM		15		//15 degrees
 #define DEFAULT_TEMP0_HIGH_ALARM		32		//32 Degrees C
 #define DEFAULT_TEMP0_LOW_ALARM			28		//28 Degrees C
 #define MODULE_LOW_ALARM 				1
 #define MODULE_HIGH_ALARM 				2
+
+/** Zone & subzone **/
+#define ZONE 							5
+#define SUBZONE 						9
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
