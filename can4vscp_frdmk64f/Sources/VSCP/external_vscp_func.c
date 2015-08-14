@@ -34,6 +34,7 @@ extern uint8_t temp0_high_alarm;
 extern uint8_t accel0_high_alarm;
 extern uint8_t seconds_temp;        // timer for temp event
 extern uint8_t seconds_accel;        // timer for accel event
+uint8_t flag = 0;
 
 // Alarm flag bits
 uint8_t temp_low_alarm;
@@ -417,7 +418,7 @@ void doWork(void)
 	uint8_t setpoint;
 	uint8_t control_reg;
 
-	//updateAccel();
+	updateAccel();
 	updateTemp();
 
 
@@ -620,28 +621,26 @@ void doWork(void)
 						// Reset alarm - we try again next round
 						temp_low_alarm &= ~(1 << i);
 					}
-
 				}
 			}
 		}
 	} /*! VSCP-ACTIVE-STATE*/
 }
 
-void doApplicationOneSecondWork(void)
+void doApplicationOneSecondWork()
 {
-	uint8_t tmp;
-
+	uint8_t tmp = 1;
 	uint8_t i = 0;
 
 
 	// Check if events should be sent
 	if ( VSCP_STATE_ACTIVE == vscp_node_state ) {
 
+		CLOCK_PIN_TOGGLE;
+
 		// Time for temperature report ?
 #ifdef USE_EEPROM
 		tmp = spi_eeprom_read(REG_TEMP0_REPORT_INTERVAL + i);
-#else
-		tmp = 2;
 #endif
 		if (tmp && (seconds_temp > tmp)) {
 
@@ -654,14 +653,26 @@ void doApplicationOneSecondWork(void)
 		// Time for accel report ?
 #ifdef USE_EEPROM
 		tmp = spi_eeprom_read(REG_ACCEL0_REPORT_INTERVAL);
-#else
-		tmp = 2;
 #endif
 		if(tmp && (seconds_accel > tmp)) {
 
+			i=0;
+
+			// Sensor 0 will be for the X angle
 			if(sendAccelEvent()) {
 				seconds_accel = 0;
+				if( 0 == flag)
+					flag = 1;
+				else
+					flag = 0;
 			}
+
+			/*i++;
+
+			// Sensor 1 will be for the Y angle
+			if(sendAccelEvent( i )) {
+				seconds_accel = 0;
+			}*/
 		}
 	}
 }
@@ -669,24 +680,35 @@ void doApplicationOneSecondWork(void)
 void updateAccel( void ) {
 
 	accelData = getAngle(i2cDevice);
-#ifdef DO_PRINT
-	PRINTF("X = %d, Y = %d \r\n", accelData.xAngle, accelData.yAngle);
-#endif
 
 	//current_xAngle = accelData.xAngle; // current_xAngle allows us to also read the current accel event
 	//current_yAngle = accelData.yAngle;
+
+#ifdef DO_NOT_PRINT
+	PRINTF("X = %d, Y = %d :) \r\n", accelData.xAngle, accelData.yAngle);
+#endif
 }
 
-/* todo: this needs to be updated to display the correct radian value, or use different measurement TYPE */
-int8_t sendAccelEvent( void )
+///////////////////////////////////////////////////////////////////////////////
+// sendAccelEvent
+//
+int8_t sendAccelEvent()
 {
-	vscp_omsg.flags = VSCP_VALID_MSG + 3; // three data byte
-	vscp_omsg.priority = VSCP_PRIORITY_LOW;
+	vscp_omsg.flags = VSCP_VALID_MSG + 4; // three data byte
+	vscp_omsg.priority = VSCP_PRIORITY_MEDIUM;
 	vscp_omsg.vscp_class = VSCP_CLASS1_MEASUREMENT;
-	vscp_omsg.vscp_type = VSCP_TYPE_MEASUREMENT64_ANGLE;
-	vscp_omsg.data[ 0 ] = 0;
-	vscp_omsg.data[ 1 ] = accelData.xAngle;
-	vscp_omsg.data[ 2 ] = accelData.yAngle;
+	vscp_omsg.vscp_type = VSCP_TYPE_MEASUREMENT_ANGLE;
+	vscp_omsg.data[ 0 ] = 0x80 | ((0x03 & DEGREE) << 3) | flag;
+	vscp_omsg.data[ 1 ] = 0x80; //Shift by 0 decimal places in the positive direction.
+	vscp_omsg.data[ 2 ] = 0;
+
+	if(0 == flag){
+		vscp_omsg.data[ 3 ] = accelData.xAngle;
+	}
+	else {
+		vscp_omsg.data[ 3 ] = accelData.yAngle;
+		//vscp_omsg.vscp_type = VSCP_TYPE_MEASUREMENT_POSITION;
+	}
 
 	// send the event
 	vscp_sendEvent();
@@ -707,11 +729,15 @@ int8_t sendTempEvent(uint8_t i)
     vscp_omsg.vscp_type = VSCP_TYPE_MEASUREMENT_TEMPERATURE;
 
     // Data format
-    vscp_omsg.data[ 0 ] = 0x80 | // Normalized integer
+    vscp_omsg.data[ 0 ] = 0x80 | // Normalized integer (bits 5,6,7)
             ((0x03 & spi_eeprom_read(i + REG_TEMP0_CONTROL)) << 3) | // Unit
+    		//((0x03 & TEMP_UNIT_FAHRENHEIT) << 3) | // Unit
             i; // Sensor
-    // Exponent
-    vscp_omsg.data[ 1 ] = 0x82;
+
+    /* Normalized Exponent, how many decimal places to shift by.
+       This uses magnitude & direction where bit 7 is the direction (1= positive exp) */
+
+    vscp_omsg.data[ 1 ] = 0x80; //Shift by 0 decimal places in the positive direction.
 
     setEventData( current_temp,
             ( 0x03 & spi_eeprom_read(i + REG_TEMP0_CONTROL)) ); // Format data based on Unit
@@ -742,12 +768,15 @@ void setEventData(int v, unsigned char unit)
         newval = Celsius2Fahrenheit(v);
     } else {
         // Defaults to Celsius
-        newval = v;
+    	//newval = v;
+    	// Send fahrenheit
+    	newval = Celsius2Fahrenheit(v);
     }
 
     //ival = (int) newval;
 
-    vscp_omsg.data[ 2 ] = newval;
+    vscp_omsg.data[ 2 ] = 0; 		// MSB
+    vscp_omsg.data[ 3 ] = newval;	// LSB
 
     /*
     vscp_omsg.data[ 2 ] = ((ival & 0xff00) >> 8);

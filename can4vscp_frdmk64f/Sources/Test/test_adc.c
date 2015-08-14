@@ -35,9 +35,9 @@ void updateTemp(void) {
 
 	// Get current Temperature Value
 	current_temp = (uint8_t) ( GetCurrentTempValue() & 0xff );
-#ifdef DO_PRINT
-	PRINTF("current temp = %d\r\n", current_temp);
-#endif
+
+	//PRINTF("current temp = %d\r\n", current_temp);
+
 	conversionCompleted = false;
 
 }

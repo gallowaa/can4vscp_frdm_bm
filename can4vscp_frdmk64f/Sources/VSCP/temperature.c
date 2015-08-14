@@ -8,6 +8,10 @@ uint8_t Celsius2Kelvin(int celsius) {
 }
 
 uint8_t Celsius2Fahrenheit(int celsius) {
-	return (celsius * 9 / 5) + 32;
+
+	 float temp = 0;
+	 temp = (celsius * 9 / (float) 5.0) + 32;
+	 //PRINTF("%d F\r\n", (uint8_t) temp);
+	 return (uint8_t) temp;
 }
 

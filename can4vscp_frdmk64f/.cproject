@@ -160,4 +160,5 @@
 			<resource resourceType="PROJECT" workspacePath="/can4vscp_frdmk64f"/>
 		</configuration>
 	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 </cproject>

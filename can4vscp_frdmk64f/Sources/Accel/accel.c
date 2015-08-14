@@ -8,7 +8,7 @@
 #include "main.h"
 
 
-accel_data_t getAngle(fxos_handler_t i2cModule){
+accel_data_t getAngle(fxos_handler_t i2cModule) {
 
 	fxos_data_t sensorData;
 	//fxos_handler_t i2cModule;
@@ -40,12 +40,17 @@ accel_data_t getAngle(fxos_handler_t i2cModule){
 	xAngl16 = abs((int16_t)(xData * 0.011));
 	yAngl16 = abs((int16_t)(yData * 0.011));
 
+#ifdef DO_PRINT
 	PRINTF("X = %d, Y = %d \r\n", xAngl16, yAngl16);
+#endif
 
 	accel.xAngle = (uint8_t)((xAngl16) & 0xff);
 	accel.yAngle = (uint8_t)((yAngl16) & 0xff);
 
+#ifdef DO_PRINT
 	PRINTF("X = %d, Y = %d \r\n", accel.xAngle, accel.yAngle);
+#endif
+
 	return accel;
 
 }
@@ -78,6 +83,6 @@ void printAngle(fxos_handler_t i2cModule){
 	accel.xAngle = (uint8_t)((xAngl16) & 0xff);
 	accel.yAngle = (uint8_t)((yAngl16) & 0xff);
 
-	PRINTF("X = %d, Y = %d \r\n", accel.xAngle, accel.yAngle);
+	//PRINTF("X = %d, Y = %d \r\n", accel.xAngle, accel.yAngle);
 
 }

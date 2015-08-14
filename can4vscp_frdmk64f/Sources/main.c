@@ -39,7 +39,6 @@
 //#define VSCP_REG_IN_FLASH  // Un-comment this to use FLASH instead of EEPROM for the VSCP registers
 //#define DO_PRINT			 // Un-comment this to print out debug info
 
-
 #define LPTMR_INSTANCE      (0U)
 #define BOARD_PIT_INSTANCE  (0U)
 #define ADC_0				(0U)
@@ -121,7 +120,7 @@ void hardware_init() {
 
 	/* Init board clock */
 	BOARD_ClockInit();
-	dbg_uart_init();
+	//dbg_uart_init();
 
 	configure_spi_pins(0); 	// Configure SPI pins for talking to EEPROM w/ MAC address
 	configure_i2c_pins(0);  // Configure IIC pins for accelerometer
@@ -192,11 +191,13 @@ void init_pit()
 
 
 extern uint32_t numErrors;
+//uint8_t flag = 0;
 
 // ***************************************************************************
 // Main() - Main Routine
 // ***************************************************************************
 int main(void) {
+
 
 	// Init mcu and peripherals
 	hardware_init();
@@ -281,7 +282,7 @@ int main(void) {
 		// do a measurement if needed
 		if ( measurement_clock > 1000 ) {
 
-			PRINTF("Transmit send errors: %d\r", numErrors);
+			//PRINTF("Transmit send errors: %d\r", numErrors);
 
 			measurement_clock = 0;
 
@@ -299,7 +300,7 @@ int main(void) {
 
 				/* temperature is done here, it will check seconds_temp variable
 				 * so that it sends the event as per the REPORT_INTERVAL specified */
-				doApplicationOneSecondWork();
+				//doApplicationOneSecondWork();
 				seconds_temp++; // Temperature report timers are only updated if in active state
 				seconds_accel++;
 

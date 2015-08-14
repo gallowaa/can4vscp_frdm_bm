@@ -77,7 +77,10 @@ void init_spi() {
  */
 void spi_eeprom_write(uint8_t addr, uint8_t data){
 
+#ifdef DO_PRINT
 	uint32_t i;
+#endif
+
 	dspi_status_t dspiResult;
 	uint8_t receiveBuffer[TRANSFER_SIZE] = {0};
 	uint8_t sendBuffer[TRANSFER_SIZE] = {0};
@@ -155,7 +158,10 @@ void spi_eeprom_write(uint8_t addr, uint8_t data){
  */
 uint8_t spi_eeprom_read(uint8_t addr) {
 
+#ifdef DO_PRINT
 	uint32_t i;
+#endif
+
 	dspi_status_t dspiResult;					/*! check status of transfer */
 	uint8_t sendBuffer[MIN_TFR_SIZE] 	 = {0}; /*! [  op-code ] [  address ] [     dummy   ] */
 	uint8_t receiveBuffer[ MIN_TFR_SIZE] = {0};	/*! [  dummy   ] [  dummy   ] [returned data] */
@@ -303,7 +309,10 @@ void spi_eeprom_guid_init() {
  */
 void spi_eeprom_print_eui48() {
 
+#ifdef DO_PRINT
 	uint32_t i;
+#endif
+
 	dspi_status_t dspiResult;
 	uint8_t receiveBuffer[TRANSFER_SIZE] = {0};
 	uint8_t sendBuffer[TRANSFER_SIZE] = {0x03,0xFA,2,3,4,5,6,7};

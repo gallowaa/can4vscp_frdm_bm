@@ -73,6 +73,17 @@
 /* VSCP application level */
 #define PAGES 1
 
+/* Units for angle are:
+ * Default 0, radian
+ * 1, degree
+ * 2, arcminute
+ * 3, arcsecond
+ *
+ * See: http://www.vscp.org/docs/vscpspec/doku.php?id=class1.measurement#type_30_0x1e_angle
+ *
+ * */
+#define DEGREE 1
+
 /* VSCP core features */
 /* There is enough space on the 2kbit eeprom to also use it for the vscp core registers
  */
@@ -210,7 +221,7 @@ extern uint32_t RelocateFunction(uint32_t dest, uint32_t size, uint32_t src);
 
 extern uint8_t sendTimer;  // Timer for CAN send
 
-void doApplicationOneSecondWork(void);
+void doApplicationOneSecondWork();
 
 void doWork(void);
 
@@ -231,7 +242,7 @@ void init_app_ram( void );
 
 void doDM( void );
 
-int8_t sendAccelEvent( void );
+int8_t sendAccelEvent();
 
 
 

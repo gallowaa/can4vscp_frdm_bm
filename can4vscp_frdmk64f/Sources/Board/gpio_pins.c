@@ -119,7 +119,7 @@ const gpio_output_pin_user_config_t gpioPins[] = {
 		{
 				.pinName = kGpioProbeMe,
 				.config.outputLogic = 1,
-				.config.slewRate = kPortSlowSlewRate,
+				.config.slewRate = kPortFastSlewRate,
 				.config.isOpenDrainEnabled = false,
 				.config.driveStrength = kPortLowDriveStrength,
 		},

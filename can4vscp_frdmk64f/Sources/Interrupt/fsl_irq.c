@@ -112,7 +112,7 @@ void PIT0_IRQHandler(void)
 {
 	/* Clear interrupt flag.*/
 	PIT_HAL_ClearIntFlag(g_pitBase[0], 0U);
-	CLOCK_PIN_TOGGLE; 	/* Used to verify 1ms clock. Period/2 should = 1ms. */
+	//CLOCK_PIN_TOGGLE; 	/* Used to verify 1ms clock. Period/2 should = 1ms. */
 
 	// critical vscp
 	vscp_timer++;

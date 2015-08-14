@@ -41,18 +41,17 @@ uint32_t rxIdentifier;
 uint32_t txRemoteIdentifier;
 uint32_t rxRemoteIdentifier;
 uint32_t rxMailboxNum = 0;
-uint32_t txMailboxNum = 1;
+uint32_t txMailboxNum = 8;
 uint32_t rxRemoteMailboxNum;
 uint32_t rxRemoteMailboxNum;
 flexcan_state_t canState;
-
 //flexcan_msgbuff_t rxMb;
 
 /*! These MUST be global or FLEXCAN_DRV_IRQHandler will hard fault */
 flexcan_data_info_t rxInfo;
 flexcan_data_info_t txInfo;
 
-uint32_t instance = BOARD_CAN_INSTANCE;
+//uint32_t instance = BOARD_CAN_INSTANCE;
 uint32_t numErrors;
 
 uint32_t result;
@@ -62,6 +61,7 @@ uint32_t canPeClk;
 void configure_CAN_MessageBuffs(void);
 
 flexcan_status_t FLEXCAN_DRV_AbortSendingData(uint32_t instance);
+flexcan_status_t FLEXCAN_DRV_AbortReceivingData(uint32_t instance);
 
 /* The following tables are the CAN bit timing parameters that are calculated by using the method
  * outlined in AN1798, section 4.1.
@@ -106,7 +106,9 @@ void init_flexcan(void) {
 	flexcanData.is_rx_fifo_needed = false;
 	flexcanData.flexcanMode = kFlexCanNormalMode;
 
-	rxIdentifier = 0x123; // These get overwritten, but they will initially set ID0, & ID8
+	//rxIdentifier = 0x123; // These get overwritten, but they will initially set ID0, & ID8
+	rxIdentifier = 0x0900;
+
 	txIdentifier = 0x122;
 
 	/* The following tables are the CAN bit timing parameters that are calculated by using the method
@@ -145,14 +147,14 @@ void init_flexcan(void) {
 	};
 
 
-	result = FLEXCAN_DRV_Init(instance, &canState, &flexcanData);
+	result = FLEXCAN_DRV_Init(BOARD_CAN_INSTANCE, &canState, &flexcanData);
 	if (result)
 	{
 		numErrors++;
 		printf("\r\nFLEXCAN initilization. result: 0x%lx", result);
 	}
 
-	if (FLEXCAN_HAL_GetClock((g_flexcanBase[instance])))
+	if (FLEXCAN_HAL_GetClock((g_flexcanBase[BOARD_CAN_INSTANCE])))
 	{
 		canPeClk = CLOCK_SYS_GetFlexcanFreq(0, kClockFlexcanSrcBusClk);
 	}
@@ -164,10 +166,10 @@ void init_flexcan(void) {
 	switch (canPeClk)
 	{
 	case 60000000:
-		result = FLEXCAN_DRV_SetBitrate(instance, &bitRateTable60Mhz[0]); // 125kbps for vscp
+		result = FLEXCAN_DRV_SetBitrate(BOARD_CAN_INSTANCE, &bitRateTable60Mhz[0]); // 125kbps for vscp
 		break;
 	case 48000000:
-		result = FLEXCAN_DRV_SetBitrate(instance, &bitRateTable48Mhz[0]); // 125kbps
+		result = FLEXCAN_DRV_SetBitrate(BOARD_CAN_INSTANCE, &bitRateTable48Mhz[0]); // 125kbps
 		break;
 	default:
 		printf("\r\nFLEXCAN bitrate table not available for PE clock: %lu", canPeClk);
@@ -181,9 +183,13 @@ void init_flexcan(void) {
 
 #ifdef MASK
 
-	FLEXCAN_DRV_SetRxMaskType(instance, kFlexCanRxMaskGlobal);
+	FLEXCAN_DRV_SetRxMaskType(BOARD_CAN_INSTANCE, kFlexCanRxMaskGlobal);
 	//result = FLEXCAN_DRV_SetRxMbGlobalMask(instance, kFlexCanMsgIdStd, 0x123);
-	result = FLEXCAN_DRV_SetRxMbGlobalMask(instance, kFlexCanMsgIdStd, 0x000); //kFlexCanMsgIdExt
+	//result = FLEXCAN_DRV_SetRxMbGlobalMask(instance, kFlexCanMsgIdStd, 0x000); //kFlexCanMsgIdExt
+
+	/* This should only let us receive read register events (Type = 0x09) */
+	result = FLEXCAN_DRV_SetRxMbGlobalMask(BOARD_CAN_INSTANCE, kFlexCanMsgIdExt, 0xFF00);
+
 
 	if (result)
 	{
@@ -193,10 +199,10 @@ void init_flexcan(void) {
 
 #ifdef CAN0_INDIVIDUAL_MASK
 
-	FLEXCAN_DRV_SetRxMaskType(instance, kFlexCanRxMaskIndividual);
+	FLEXCAN_DRV_SetRxMaskType(BOARD_CAN_INSTANCE, kFlexCanRxMaskIndividual);
 
 	// Standard ID
-	result = FLEXCAN_DRV_SetRxIndividualMask(instance, kFlexCanMsgIdStd, rxMailboxNum, 0x7FF);
+	result = FLEXCAN_DRV_SetRxIndividualMask(BOARD_CAN_INSTANCE, kFlexCanMsgIdStd, rxMailboxNum, 0x7FF);
 	if(result)
 	{
 		numErrors++;
@@ -206,7 +212,7 @@ void init_flexcan(void) {
 
 	// Extern ID
 
-	result = FLEXCAN_DRV_SetRxIndividualMask(instance, kFlexCanMsgIdExt, rxMailboxNum, 0x123);
+	result = FLEXCAN_DRV_SetRxIndividualMask(BOARD_CAN_INSTANCE, kFlexCanMsgIdExt, rxMailboxNum, 0x123);
 	if(result)
 	{
 		numErrors++;
@@ -223,7 +229,7 @@ void init_flexcan(void) {
 
 
 	/* Attempt to receive a message into rxMb */
-	//result = FLEXCAN_DRV_RxMessageBuffer(instance, rxMailboxNum, &rxMb);
+	// result = FLEXCAN_DRV_RxMessageBuffer(BOARD_CAN_INSTANCE, rxMailboxNum, &rxMb);
 }
 
 /*!
@@ -242,22 +248,22 @@ void configure_CAN_MessageBuffs(void)
 	txInfo.msg_id_type = kFlexCanMsgIdExt;
 	txInfo.data_length = 8;
 
-	for(i=0;i<8;i++){
+	/*for(i=0;i<8;i++){
 
-		/* Configure RX MB fields */
+		// Configure RX MB fields
 
-		result = FLEXCAN_DRV_ConfigRxMb(instance, i, &rxInfo, rxIdentifier);
+		result = FLEXCAN_DRV_ConfigRxMb(BOARD_CAN_INSTANCE, i, &rxInfo, rxIdentifier);
 		if (result)
 		{
 			numErrors++;
 			printf("FlexCAN RX MB configuration failed. result: 0x%lx \r\n", result);
 		}
-	}
+	}*/
 
 	for(i=8;i<16;i++){
 
 		/* Configure TX MB fields */
-		result = FLEXCAN_DRV_ConfigTxMb(instance, i, &txInfo, txIdentifier);
+		result = FLEXCAN_DRV_ConfigTxMb(BOARD_CAN_INSTANCE, i, &txInfo, txIdentifier);
 		if (result)
 		{
 			printf("Transmit MB config error. Error Code: 0x%lx \r\n", result);
@@ -276,8 +282,16 @@ void configure_CAN_rxMessageBuff(void)
 	rxInfo.msg_id_type = kFlexCanMsgIdExt;
 	rxInfo.data_length = 8;
 
+	/* Configure RX MB fields
+	 *
+	 * global rxMailboxNum = 0;
+	 * global rxIdentifier = 0x900;
+	 * global rxInfo
+	 *
+	 * */
+
 	/* Configure RX MB fields */
-	result = FLEXCAN_DRV_ConfigRxMb(instance, rxMailboxNum, &rxInfo, rxIdentifier);
+	result = FLEXCAN_DRV_ConfigRxMb(BOARD_CAN_INSTANCE, rxMailboxNum, &rxInfo, rxIdentifier);
 	if (result)
 	{
 		numErrors++;
@@ -318,7 +332,7 @@ int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_
 	//txInfo.data_length = 8;
 	txInfo.data_length = dlc;
 
-	result = FLEXCAN_DRV_ConfigTxMb(instance, txMailboxNum, &txInfo, txIdentifier);
+	result = FLEXCAN_DRV_ConfigTxMb(BOARD_CAN_INSTANCE, txMailboxNum, &txInfo, txIdentifier);
 
 	if (result)
 	{
@@ -327,9 +341,9 @@ int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_
 	else
 	{
 #ifdef IS_CAN_SEND_BLOCKING
-		result = FLEXCAN_DRV_SendBlocking(instance, txMailboxNum, &txInfo, txIdentifier, pdata, 1000); /* 1000ms timeout or can use OSA_WAIT_FOREVER */
+		result = FLEXCAN_DRV_SendBlocking(BOARD_CAN_INSTANCE, txMailboxNum, &txInfo, txIdentifier, pdata, 1000); /* 1000ms timeout or can use OSA_WAIT_FOREVER */
 #else
-		result = FLEXCAN_DRV_Send(instance, txMailboxNum, &txInfo, txIdentifier, pdata);
+		result = FLEXCAN_DRV_Send(BOARD_CAN_INSTANCE, txMailboxNum, &txInfo, txIdentifier, pdata);
 #endif
 		if (result)
 		{
@@ -364,78 +378,63 @@ int FLEXCANSendMessage(uint32_t id, uint8_t dlc, uint8_t *pdata, FLEXCAN_TX_MSG_
     @param msgFlags - type of can frame
     @return TRUE on success.
 */
-#define BUSY_WAIT
 flexcan_code_t FLEXCANReceiveMessage(uint32_t *pid, uint32_t *pdlc, uint32_t *pdata, FLEXCAN_RX_MSG_FLAGS *msgFlags)
 {
-	uint32_t result;
+	uint32_t result = 0;
 	flexcan_msgbuff_t rxMb;
 
-	/* Attempt to receive a message into rxMb */
-	result = FLEXCAN_DRV_RxMessageBuffer(instance, rxMailboxNum, &rxMb);
+	/* Configure RX MB fields
+	 *
+	 * global rxMailboxNum = 0;
+	 * global rxIdentifier = 900;
+	 * global rxInfo
+	 *
+	 * */
 
-	/* The FlexCAN uses only an interrupt driven process, but we busy-wait here by,
-	 * polling the CODE field of the message buffer code and status word */
+	rxInfo.msg_id_type = kFlexCanMsgIdExt;
+	rxInfo.data_length = 8;
 
-#ifdef TEST_CAN
-	if(VSCP_STATE_ACTIVE == vscp_node_state)
-	{
-		while(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success) {}
-	}
-	else
-	{
-		if(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success)
-		{
-				return FLEXCAN_FAIL;
-		}
-	}
-#endif
-
-	if(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success)
-	{
-		return FLEXCAN_FAIL;
-	}
-
-	/*
-	while(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success) {
-
-		//can implement a delay in here so that we return false after waiting too long
-		delay++;
-		if(delay > 1000) {
-			delay = 0;
-			return FLEXCAN_FAIL;
-		}
-	}*/
-
+	result = FLEXCAN_DRV_ConfigRxMb(BOARD_CAN_INSTANCE, rxMailboxNum, &rxInfo, rxIdentifier);
 	if (result)
 	{
 		numErrors++;
-#ifdef DO_PRINT
-		printf("\r\nFLEXCAN receive configuration failed. result: 0x%lx", result);
-#endif
+		printf("FlexCAN RX MB configuration failed. result: 0x%lx \r\n", result);
+		return FLEXCAN_FAIL;
 	}
 
-	else
-	{	/* Successfully received something! Begin extracting information from message
-	     * buffer which is defined on pg. 1400 of the K64 Sub-Family Ref. Manual */
 
-		*pid = rxMb.msgId;				  // The message ID occupies bits 0-28 (EXT) or 18-28 (STD)
+	if(FLEXCAN_DRV_GetReceiveStatus(BOARD_CAN_INSTANCE) == kStatus_FLEXCAN_Success)
+	{
+		/* Attempt to receive a message into rxMb */
+		result = FLEXCAN_DRV_RxMessageBufferBlocking(BOARD_CAN_INSTANCE, rxMailboxNum, &rxMb, 500);
 
-		*pdlc = ((rxMb.cs) >> 16) & 0xF;  // The data length field (DLC) occupies bits 16 - 19
+		if(0 == result) {
 
-		*msgFlags = ((rxMb.cs) >> 21) & 0x1; // The ID Extended Bit field (IDE) is bit 21
+			/* Successfully received something! Begin extracting information from message
+			 * buffer which is defined on pg. 1400 of the K64 Sub-Family Ref. Manual */
+
+			*pid = rxMb.msgId;				  // The message ID occupies bits 0-28 (EXT) or 18-28 (STD)
+
+			*pdlc = ((rxMb.cs) >> 16) & 0xF;  // The data length field (DLC) occupies bits 16 - 19
+
+			*msgFlags = ((rxMb.cs) >> 21) & 0x1; // The ID Extended Bit field (IDE) is bit 21
 
 #ifdef DO_PRINT
-		printf("ID: 0x%lx, DLC=%lu, mb_idx=%lu\n",*pid, *pdlc, rxMailboxNum);
-		printf("RX MB data: 0x");
+			printf("ID: 0x%lx, DLC=%lu, mb_idx=%lu\n",*pid, *pdlc, rxMailboxNum);
+			printf("RX MB data: 0x");
 #endif
-		for (result = 0; result < *pdlc; result++){
+			for (result = 0; result < *pdlc; result++){
 #ifdef DO_PRINT
-		printf("%02x ", rxMb.data[result]);
+				printf("%02x ", rxMb.data[result]);
 #endif
-		pdata[result] = rxMb.data[result];
+				pdata[result] = rxMb.data[result];
+			}
+			return FLEXCAN_SUCCESS;
 		}
 	}
-	return FLEXCAN_SUCCESS;
+
+	//FLEXCAN_DRV_AbortReceivingData(BOARD_CAN_INSTANCE);
+	return FLEXCAN_FAIL;
 }
 
 
@@ -447,9 +446,9 @@ void transfer_mb_loopback(void)
 
 	//send_data();
 
-	result = FLEXCAN_DRV_RxMessageBuffer(instance, rxMailboxNum,&rxMb);
+	result = FLEXCAN_DRV_RxMessageBuffer(BOARD_CAN_INSTANCE, rxMailboxNum,&rxMb);
 
-	while(FLEXCAN_DRV_GetReceiveStatus(instance) != kStatus_FLEXCAN_Success) {}
+	while(FLEXCAN_DRV_GetReceiveStatus(BOARD_CAN_INSTANCE) != kStatus_FLEXCAN_Success) {}
 	if (result)
 	{
 		numErrors++;
