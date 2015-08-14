@@ -1,9 +1,7 @@
 <h1> A baremetal port of VSCP firmware to Kinetis </h1>
-<p> This is one of the pieces of the "EasyIoTwithVSCP" project on the Freescale Community. The first supported platform is the FRDM-K64F, however since the Kinetis SDK is used it should be highly portable to other kinetis devices with a CAN controller </p>
+<p> This is one of the pieces of the "EasyIoTwithVSCP" project on the Freescale Community. The first supported platform is the FRDM-K64F, however since the Kinetis SDK is used it should be highly portable to other Kinetis devices with a FlexCAN peripheral </p>
 
 <h2> Project Requirements</h2>
-
-Note that this repository is a work in progress.
 
 <h3> 1. Get the vscp firmware and software: </h3>
 <ul>
@@ -19,13 +17,13 @@ Note that this repository is a work in progress.
 
 <h5> Setup the Freescale tools: </h5>
 <ul>
-<li> Accept the default installation path, "C:/Freescale" in windows</li>
+<li> Accept the default KSDK installation path, ex. "C:/Freescale" on a Windows machine</li>
 <li> An update is needed to make the IDE KSDK compatible. To install:</li>
 <li><code> Help > Install New Software > Add > Archive > Browse C:/Freescale/KSDK_1.2.0/tools/eclipse_update/KSDK_1.2.0_Eclipse_Update.zip </code></li>
-
 <li> When using the KSDK, we need to link to a platform library which contains hardware and operating system abstraction layers (HAL & OSA), peripheral drivers, and startup code. To Build the platform library: </li>
 <li><code> File > Import > General > Existing Projects into Workspace > Next > Browse
 C:/Freescale/KSDK_1.2.0/lib/ksdk_platform_lib/kds/<device_name></code></li>
+<li> Don't forget to correct the include path for <code>vscp_firmware/common</code> to match your machine </li>
 </ul>
 
 <h3> 3. Additional Info </h3>
