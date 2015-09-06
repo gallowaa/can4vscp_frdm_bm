@@ -1,9 +1,10 @@
 <h1> A baremetal port of VSCP firmware to Kinetis </h1>
 <p> This is one of the pieces of the "EasyIoTwithVSCP" project on the Freescale Community. The first supported platform is the FRDM-K64F, however since the Kinetis SDK is used it is highly portable to other Kinetis devices with a FlexCAN peripheral. If you want to try this code you might want to use a TWR-K6x as the TWR-SER has a CAN transceiver. Alternatively, make a request for a FRDM-CAN-VSCP shield through the Freescale Community. </p>
 
-<h2> Known Limitations <h2>
-<p> The code for handling CAN RX messages occaisionally hardfaults. This is being looked into and the problem does not exist with MQX, due to what I believe to be more robust transitioning between mailbox states (empty, full, overrun, etc) </p>
+<h2> Known Limitations </h2>
+<p> Receiving CAN messages can cause a hardfault. This is being looked into and the problem does not exist with MQX, due to what I believe to be more robust transitioning between mailbox states (empty, full, overrun, etc) </p>
 <p>  Comment out vscp_getEvent() in main.c to prevent hardfaults. The device will report vscp data (die temperature and accelerometer). </p>
+
 
 <h2> Project Requirements</h2>
 
